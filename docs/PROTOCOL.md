@@ -165,6 +165,11 @@ context supplied by a trusted Buzz integration. The context binds the
 contract's issuer and subject to verified owner and agent public keys, and
 binds the action request to a Buzz repository, ref, and channel.
 
+The gateway authenticates the canonical context envelope with HMAC-SHA-256.
+The enforcement point supplies the HMAC key, expected community endpoint, and
+expected repository-announcement event ID independently of the action request.
+The key must not be exposed to the agent.
+
 The integration, not PermitMesh, must verify Nostr event integrity and
 signatures, the NIP-OA owner attestation, the repository announcement, and
 current `buzz-protect` state. The context must be verified no more than five

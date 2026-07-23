@@ -186,9 +186,9 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 | Window | Outcome | Proof | Stop condition |
 | --- | --- | --- | --- |
 | Days 0–2 | After council approval, publish a crisp release and 30-second allowed/denied Buzz-context demo | public clone and reproducible CI | clean checkout fails |
-| Days 2–4 | Open one design-first Buzz discussion linking the gap, not pitching a product | maintainer response or acknowledged issue/discussion | contribution guidance says another venue |
-| Days 3–7 | Post one visual explanation and invite maintainers to break the policy | runnable fixtures and issue template | messaging implies endorsement |
-| Days 5–10 | Onboard three maintainers manually | redacted decision receipts | setup exceeds 10 minutes repeatedly |
+| Days 2–5 | Post one visual explanation and invite relevant agent-runtime maintainers to break the policy | runnable fixtures and issue template | messaging implies endorsement |
+| Days 3–7 | Onboard three maintainers manually | redacted decision receipts | setup exceeds 10 minutes repeatedly |
+| Days 7–10 | Only after one independent reaction, open one design-first Buzz discussion linking the gap, not pitching a product | maintainer response or acknowledged issue/discussion | contribution guidance says another venue |
 | Days 10–14 | Publish findings, including what failed, and choose adapter/no-adapter | evidence-backed phase ruling | no repeated integration boundary |
 
 ## Change log

@@ -10,12 +10,13 @@ from .policy import (
     verify_completion,
 )
 from .conformance import run_conformance
-from .buzz import authorize_buzz, validate_buzz_context
+from .buzz import authorize_buzz, compute_buzz_context_mac, validate_buzz_context
 
 __all__ = [
     "Decision",
     "authorize",
     "authorize_buzz",
+    "compute_buzz_context_mac",
     "contract_digest",
     "operation_digest",
     "run_conformance",

@@ -7,8 +7,10 @@
   "additionalProperties": false,
   "required": [
     "context_version",
-    "community",
+    "community_uri",
     "contract_digest",
+    "producer_id",
+    "context_mac",
     "owner_pubkey",
     "agent_pubkey",
     "owner_attestation_event_id",
@@ -22,11 +24,16 @@
   ],
   "properties": {
     "context_version": {"const": "0.1"},
-    "community": {
+    "community_uri": {
       "type": "string",
-      "pattern": "^(?:https|wss)://[^/?#]+(?:/[^?#]*)?$"
+      "pattern": "^(?:https|wss)://(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$"
     },
     "contract_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "producer_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:/-]{3,128}$"
+    },
+    "context_mac": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "owner_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "agent_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "owner_attestation_event_id": {
@@ -42,6 +49,10 @@
     "ref": {"type": "string", "minLength": 1},
     "channel": {"type": "string", "minLength": 1},
     "protection_checked": {"const": true},
-    "verified_at": {"type": "string", "format": "date-time"}
+    "verified_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    }
   }
 }

@@ -769,7 +769,7 @@ class NostrAdapterTests(unittest.TestCase):
 class ConformanceTests(unittest.TestCase):
     def test_reference_suite_passes(self) -> None:
         receipt = run_conformance(ROOT / "examples" / "conformance-suite.json")
-        self.assertEqual(receipt["summary"], {"total": 33, "passed": 33, "failed": 0})
+        self.assertEqual(receipt["summary"], {"total": 36, "passed": 36, "failed": 0})
         self.assertEqual(
             receipt["enforcement_boundary"],
             "policy-decision-only; no tool execution",

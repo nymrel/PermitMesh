@@ -1,7 +1,9 @@
 {
   "context_version": "0.1",
-  "community": "wss://relay.example.com/permitmesh",
+  "community_uri": "wss://relay.example.com/permitmesh",
   "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+  "producer_id": "buzz-gateway.example",
+  "context_mac": "757d4ed73a54a3ae721a69b3c4e81a3535ccf981c7a5ae803e39fb6d14233d86",
   "owner_pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
   "agent_pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
   "owner_attestation_event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

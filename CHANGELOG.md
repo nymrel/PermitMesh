@@ -7,6 +7,8 @@
   PermitMesh contract and action request.
 - Add a trusted-context schema, CLI command, integration guide, and six
   adversarial interoperability fixtures.
+- Authenticate the trusted context producer with HMAC-SHA-256 and bind the
+  configured community plus repository-announcement event at evaluation.
 - Keep signature, attestation, and `buzz-protect` verification outside the
   reference library and explicitly assigned to the trusted integration.
 

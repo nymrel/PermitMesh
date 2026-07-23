@@ -99,7 +99,7 @@ Run the complete reproducible demo:
 .\scripts\demo.ps1
 ```
 
-Run the 33-case adversarial conformance suite and save a receipt:
+Run the 36-case adversarial conformance suite and save a receipt:
 
 ```powershell
 permitmesh conformance examples\conformance-suite.json `
@@ -134,7 +134,7 @@ PermitMesh is the policy decision point. The runtime, relay, or tool proxy remai
 permitmesh validate <contract>
 permitmesh digest <contract>
 permitmesh authorize <contract> <request> [--evaluation-time RFC3339]
-permitmesh authorize-buzz <contract> <request> <context> [--evaluation-time RFC3339]
+permitmesh authorize-buzz <contract> <request> <context> --context-key-env NAME --expected-community-uri URI --expected-repository-event-id HEX [--evaluation-time RFC3339]
 permitmesh verify-completion <contract> <report> [--evaluation-time RFC3339]
 permitmesh to-event <contract> [--created-at UNIX_SECONDS]
 permitmesh conformance <suite> [--receipt PATH] [--enforcement-boundary TEXT]
@@ -188,18 +188,25 @@ The adapter is exploratory. An upstream design conversation should decide whethe
 ## Buzz context adapter
 
 ```powershell
+$env:PERMITMESH_BUZZ_CONTEXT_KEY = "permitmesh-public-conformance-key-not-secret"
 python -m permitmesh authorize-buzz `
   examples\contract.valid.json `
   examples\request.allowed.json `
   examples\buzz-context.valid.json `
+  --context-key-env PERMITMESH_BUZZ_CONTEXT_KEY `
+  --expected-community-uri wss://relay.example.com/permitmesh `
+  --expected-repository-event-id bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb `
   --evaluation-time 2026-07-23T12:00:00Z
 ```
 
 This second adapter consumes facts from an already-trusted Buzz integration:
 verified NIP-OA owner-agent provenance, current repository protection state,
-the canonical permit digest, and repository/ref/channel identity. PermitMesh
-validates and binds those facts to the contract and request, and rejects
-context older than five minutes.
+the canonical permit digest, and repository/ref/channel identity. The trusted
+gateway authenticates the whole context with HMAC-SHA-256. PermitMesh validates
+that MAC, binds the configured community and repository-announcement event,
+binds the remaining facts to the contract and request, and rejects context
+older than five minutes. The key in this example is test data, not a
+production secret.
 
 PermitMesh does **not** fetch Buzz events, verify Nostr signatures or NIP-OA,
 or inspect `buzz-protect` itself. The runtime supplying the context owns those

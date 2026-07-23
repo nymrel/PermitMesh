@@ -29,6 +29,7 @@ PermitMesh 0.2 is a policy format and reference decision engine. It becomes a se
 | Forged issuer or approval | no claimed protection in 0.2 core | signature verification is required before production |
 | Path traversal and Windows aliases | absolute, parent, ADS, reserved-name, and DOS short-name rejection | symlinks and filesystem canonicalization are enforcer concerns |
 | Confused deputy across repos | exact repository/ref/path match | repository identity must be bound to a trusted canonical ID |
+| Agent forges trusted Buzz facts | HMAC-authenticated context plus configured community and repository-event binding | gateway and enforcement point must protect the HMAC key and verify the source events honestly |
 
 ## Security invariants
 
@@ -44,6 +45,8 @@ PermitMesh 0.2 is a policy format and reference decision engine. It becomes a se
 7. High-risk decisions fail closed without explicit consumed-nonce state.
 8. The CLI never labels an unsigned event as signed.
 9. No marketing claim may describe the reference validator as a sandbox.
+10. Buzz context is accepted only when its HMAC is valid and its community and
+    repository-announcement event match enforcement-point configuration.
 
 ## Not yet implemented
 

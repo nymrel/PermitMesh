@@ -1,20 +1,30 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
 import re
 from typing import Any
-from urllib.parse import urlsplit
 
-from .policy import Decision, RFC3339_PATTERN, authorize
+from .policy import Decision, RFC3339_PATTERN, authorize, canonical_json
 
 
 BUZZ_CONTEXT_VERSION = "0.1"
 MAX_CONTEXT_AGE = timedelta(minutes=5)
 HEX_32_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+COMMUNITY_URI_PATTERN = re.compile(
+    r"^(?:https|wss)://"
+    r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+    r"(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$"
+)
+PRODUCER_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:/-]{3,128}$")
 BUZZ_CONTEXT_FIELDS = {
     "context_version",
-    "community",
+    "community_uri",
     "contract_digest",
+    "producer_id",
+    "context_mac",
     "owner_pubkey",
     "agent_pubkey",
     "owner_attestation_event_id",
@@ -29,17 +39,22 @@ BUZZ_CONTEXT_FIELDS = {
 
 
 def _valid_community_uri(value: Any) -> bool:
-    if not isinstance(value, str) or not value:
-        return False
-    parsed = urlsplit(value)
-    return (
-        parsed.scheme in {"https", "wss"}
-        and bool(parsed.hostname)
-        and parsed.username is None
-        and parsed.password is None
-        and not parsed.query
-        and not parsed.fragment
-    )
+    return isinstance(value, str) and COMMUNITY_URI_PATTERN.fullmatch(value) is not None
+
+
+def compute_buzz_context_mac(context: dict[str, Any], key: bytes) -> str:
+    """Authenticate a context envelope produced by the trusted integration."""
+    if not isinstance(context, dict):
+        raise ValueError("buzz context must be a JSON object")
+    if not isinstance(key, bytes) or len(key) < 32:
+        raise ValueError("buzz context authentication key must be at least 32 bytes")
+    payload = dict(context)
+    payload.pop("context_mac", None)
+    return hmac.new(
+        key,
+        canonical_json(payload).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def validate_buzz_context(context: Any) -> tuple[str, ...]:
@@ -61,13 +76,19 @@ def validate_buzz_context(context: Any) -> tuple[str, ...]:
 
     if context.get("context_version") != BUZZ_CONTEXT_VERSION:
         violations.append(f"buzz context_version must be {BUZZ_CONTEXT_VERSION!r}")
-    if not _valid_community_uri(context.get("community")):
+    if not _valid_community_uri(context.get("community_uri")):
         violations.append(
-            "buzz community must be an HTTPS or WSS URI without credentials, query, or fragment"
+            "buzz community_uri must be a canonical HTTPS or WSS community endpoint"
         )
+    if (
+        not isinstance(context.get("producer_id"), str)
+        or PRODUCER_ID_PATTERN.fullmatch(context["producer_id"]) is None
+    ):
+        violations.append("buzz producer_id must be 3-128 safe characters")
 
     for field in (
         "contract_digest",
+        "context_mac",
         "owner_pubkey",
         "agent_pubkey",
         "owner_attestation_event_id",
@@ -117,6 +138,9 @@ def authorize_buzz(
     request: dict[str, Any],
     context: Any,
     *,
+    context_auth_key: bytes,
+    expected_community_uri: str,
+    expected_repository_announcement_event_id: str,
     now: datetime | None = None,
     consumed_nonces: frozenset[str] | set[str] | None = None,
 ) -> Decision:
@@ -133,6 +157,41 @@ def authorize_buzz(
     violations.extend(context_violations)
 
     if isinstance(context, dict):
+        try:
+            expected_mac = compute_buzz_context_mac(context, context_auth_key)
+        except (TypeError, ValueError):
+            violations.append(
+                "buzz context authentication key must be at least 32 bytes"
+            )
+        else:
+            supplied_mac = context.get("context_mac")
+            if not isinstance(supplied_mac, str) or not hmac.compare_digest(
+                supplied_mac, expected_mac
+            ):
+                violations.append("buzz context_mac authentication failed")
+        if not _valid_community_uri(expected_community_uri):
+            violations.append(
+                "expected_community_uri must be a canonical HTTPS or WSS community endpoint"
+            )
+        elif context.get("community_uri") != expected_community_uri:
+            violations.append(
+                "buzz community_uri does not match the configured community"
+            )
+        if (
+            not isinstance(expected_repository_announcement_event_id, str)
+            or HEX_32_PATTERN.fullmatch(expected_repository_announcement_event_id)
+            is None
+        ):
+            violations.append(
+                "expected_repository_announcement_event_id must be 64 lowercase hexadecimal characters"
+            )
+        elif (
+            context.get("repository_announcement_event_id")
+            != expected_repository_announcement_event_id
+        ):
+            violations.append(
+                "buzz repository_announcement_event_id does not match the configured repository"
+            )
         if context.get("contract_digest") != base.contract_digest:
             violations.append("buzz contract_digest does not match the active contract")
         issuer = contract.get("issuer") if isinstance(contract, dict) else None

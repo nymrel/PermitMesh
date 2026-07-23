@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -27,6 +28,9 @@ class BuzzContextTests(unittest.TestCase):
         self.contract = load_example("contract.valid.json")
         self.request = load_example("request.allowed.json")
         self.context = load_example("buzz-context.valid.json")
+        self.context_key = b"permitmesh-public-conformance-key-not-secret"
+        self.community_uri = "wss://relay.example.com/permitmesh"
+        self.repository_event_id = "b" * 64
         self.now = datetime(2026, 7, 23, 12, tzinfo=timezone.utc)
 
     def test_valid_context_allows_in_scope_request(self) -> None:
@@ -34,6 +38,9 @@ class BuzzContextTests(unittest.TestCase):
             self.contract,
             self.request,
             self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
             now=self.now,
         )
         self.assertTrue(decision.allowed)
@@ -47,6 +54,9 @@ class BuzzContextTests(unittest.TestCase):
             self.contract,
             self.request,
             context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
             now=self.now,
         )
         self.assertFalse(decision.allowed)
@@ -61,6 +71,9 @@ class BuzzContextTests(unittest.TestCase):
             self.contract,
             self.request,
             self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
             now=self.now,
         )
         self.assertFalse(decision.allowed)
@@ -74,6 +87,9 @@ class BuzzContextTests(unittest.TestCase):
             self.contract,
             self.request,
             self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
             now=self.now,
         )
         self.assertFalse(decision.allowed)
@@ -101,6 +117,11 @@ class BuzzContextTests(unittest.TestCase):
                     self.contract,
                     self.request,
                     context,
+                    context_auth_key=self.context_key,
+                    expected_community_uri=self.community_uri,
+                    expected_repository_announcement_event_id=(
+                        self.repository_event_id
+                    ),
                     now=self.now,
                 )
                 self.assertFalse(decision.allowed)
@@ -114,7 +135,7 @@ class BuzzContextTests(unittest.TestCase):
             ("owner_pubkey", "ABC"),
             ("owner_attestation_event_id", "a" * 63),
             ("repository_announcement_event_id", "g" * 64),
-            ("community", "wss://user:secret@relay.example.com/path"),
+            ("community_uri", "wss://user:secret@relay.example.com/path"),
             ("verified_at", "2026-07-23 12:00:00Z"),
         ):
             with self.subTest(field=field):
@@ -134,6 +155,11 @@ class BuzzContextTests(unittest.TestCase):
                     self.contract,
                     self.request,
                     context,
+                    context_auth_key=self.context_key,
+                    expected_community_uri=self.community_uri,
+                    expected_repository_announcement_event_id=(
+                        self.repository_event_id
+                    ),
                     now=self.now,
                 )
                 self.assertFalse(decision.allowed)
@@ -166,6 +192,74 @@ class BuzzContextTests(unittest.TestCase):
                     if not validator.is_valid(context):
                         self.assertNotEqual(validate_buzz_context(context), ())
 
+    def test_schema_and_runtime_uri_and_time_rules_are_aligned(self) -> None:
+        validator = self.context_validator()
+        valid_variants = (
+            ("community_uri", "https://relay.example.com"),
+            ("community_uri", "wss://relay.example.com/path/to/community"),
+            ("verified_at", "2026-07-23T12:00:00.123+00:00"),
+        )
+        for field, value in valid_variants:
+            with self.subTest(valid=(field, value)):
+                context = deepcopy(self.context)
+                context[field] = value
+                self.assertTrue(validator.is_valid(context))
+                self.assertEqual(validate_buzz_context(context), ())
+
+        invalid_communities = (
+            "wss://user:secret@relay.example.com/path",
+            "wss://relay.example.com:443/path",
+            "WSS://relay.example.com/path",
+            "wss://relay.example.com/path?query=yes",
+            "wss://relay.example.com/path#fragment",
+        )
+        for value in invalid_communities:
+            with self.subTest(invalid=value):
+                context = deepcopy(self.context)
+                context["community_uri"] = value
+                self.assertFalse(validator.is_valid(context))
+                self.assertNotEqual(validate_buzz_context(context), ())
+
+    def test_context_mac_and_configured_audience_are_enforced(self) -> None:
+        cases = (
+            (
+                {"context_mac": "0" * 64},
+                self.community_uri,
+                self.repository_event_id,
+                "context_mac authentication failed",
+            ),
+            (
+                {},
+                "wss://other.example.com/community",
+                self.repository_event_id,
+                "configured community",
+            ),
+            (
+                {},
+                self.community_uri,
+                "c" * 64,
+                "configured repository",
+            ),
+        )
+        for changes, community_uri, repository_event_id, fragment in cases:
+            with self.subTest(fragment=fragment):
+                context = deepcopy(self.context)
+                context.update(changes)
+                decision = authorize_buzz(
+                    self.contract,
+                    self.request,
+                    context,
+                    context_auth_key=self.context_key,
+                    expected_community_uri=community_uri,
+                    expected_repository_announcement_event_id=(repository_event_id),
+                    now=self.now,
+                )
+                self.assertFalse(decision.allowed)
+                self.assertTrue(
+                    any(fragment in item for item in decision.violations),
+                    decision.violations,
+                )
+
     @staticmethod
     def context_validator() -> Draft202012Validator:
         schema = json.loads(
@@ -178,13 +272,30 @@ class BuzzContextTests(unittest.TestCase):
     def test_cli_authorize_buzz(self) -> None:
         stdout = io.StringIO()
         stderr = io.StringIO()
-        with redirect_stdout(stdout), redirect_stderr(stderr):
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "PERMITMESH_BUZZ_CONTEXT_KEY": (
+                        "permitmesh-public-conformance-key-not-secret"
+                    )
+                },
+            ),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
             code = main(
                 [
                     "authorize-buzz",
                     str(ROOT / "examples" / "contract.valid.json"),
                     str(ROOT / "examples" / "request.allowed.json"),
                     str(ROOT / "examples" / "buzz-context.valid.json"),
+                    "--context-key-env",
+                    "PERMITMESH_BUZZ_CONTEXT_KEY",
+                    "--expected-community-uri",
+                    self.community_uri,
+                    "--expected-repository-event-id",
+                    self.repository_event_id,
                     "--evaluation-time",
                     "2026-07-23T12:00:00Z",
                 ]

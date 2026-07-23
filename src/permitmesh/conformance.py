@@ -117,10 +117,29 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
                 or len(consumed_nonces) != len(set(consumed_nonces))
             ):
                 raise ValueError("consumed_nonces must be a unique string array")
+            context_auth_key = case.get("buzz_context_auth_key")
+            if (
+                not isinstance(context_auth_key, str)
+                or len(context_auth_key.encode("utf-8")) < 32
+            ):
+                raise ValueError(
+                    "buzz_context_auth_key must encode to at least 32 bytes"
+                )
+            expected_community_uri = case.get("buzz_expected_community_uri")
+            if not isinstance(expected_community_uri, str):
+                raise ValueError("buzz_expected_community_uri must be a string")
+            expected_repository_event_id = case.get("buzz_expected_repository_event_id")
+            if not isinstance(expected_repository_event_id, str):
+                raise ValueError("buzz_expected_repository_event_id must be a string")
             decision = authorize_buzz(
                 contract,
                 request,
                 context,
+                context_auth_key=context_auth_key.encode("utf-8"),
+                expected_community_uri=expected_community_uri,
+                expected_repository_announcement_event_id=(
+                    expected_repository_event_id
+                ),
                 now=now.astimezone(timezone.utc),
                 consumed_nonces=(
                     frozenset(consumed_nonces) if consumed_nonces is not None else None

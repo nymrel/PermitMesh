@@ -751,23 +751,98 @@
       "id": "deny-unknown-buzz-context-field",
       "observed_outcome": "deny",
       "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz context_mac authentication failed"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-unauthenticated-buzz-context-producer",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz community_uri does not match the configured community"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-buzz-community-substitution",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz repository_announcement_event_id does not match the configured repository"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-buzz-repository-event-substitution",
+      "observed_outcome": "deny",
+      "passed": true
     }
   ],
   "enforcement_boundary": "policy-decision-only; no tool execution",
-  "generated_at": "2026-07-23T19:46:51.700823Z",
+  "generated_at": "2026-07-23T19:54:13.600332Z",
   "implementation": {
     "name": "permitmesh",
     "version": "0.2.0"
   },
   "receipt_version": "0.2",
   "suite": {
-    "digest": "e12dbcd236082f9152f5d48c502ef027039b07d3744526f9719e38995606dc5d",
+    "digest": "cb3adf6542036030191df856dd6266c530ed817d71745d3d0f64b9900edc48d6",
     "name": "PermitMesh reference conformance suite",
     "version": "0.2"
   },
   "summary": {
     "failed": 0,
-    "passed": 33,
-    "total": 33
+    "passed": 36,
+    "total": 36
   }
 }

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -72,6 +73,17 @@ def build_parser() -> argparse.ArgumentParser:
     buzz_parser.add_argument("contract")
     buzz_parser.add_argument("request")
     buzz_parser.add_argument("context")
+    buzz_parser.add_argument(
+        "--context-key-env",
+        required=True,
+        help="Name of the environment variable containing the context HMAC key.",
+    )
+    buzz_parser.add_argument("--expected-community-uri", required=True)
+    buzz_parser.add_argument(
+        "--expected-repository-event-id",
+        required=True,
+        help="Expected repository-announcement event id.",
+    )
     buzz_parser.add_argument(
         "--evaluation-time",
         type=_evaluation_time,
@@ -160,10 +172,21 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "authorize-buzz":
             request = _load_json(args.request)
             context = _load_json(args.context)
+            context_key = os.environ.get(args.context_key_env)
+            if context_key is None:
+                raise ValueError(
+                    f"context authentication key environment variable is not set: "
+                    f"{args.context_key_env}"
+                )
             decision = authorize_buzz(
                 contract,
                 request,
                 context,
+                context_auth_key=context_key.encode("utf-8"),
+                expected_community_uri=args.expected_community_uri,
+                expected_repository_announcement_event_id=(
+                    args.expected_repository_event_id
+                ),
                 now=args.evaluation_time,
             )
             _emit(decision.to_dict())
