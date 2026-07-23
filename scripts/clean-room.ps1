@@ -69,8 +69,15 @@ try {
     $result = [ordered]@{
         receipt_version = "0.2"
         status = "pass"
-        source = "clean local git clone"
+        source = if ($env:GITHUB_ACTIONS -eq "true") {
+            "GitHub Actions clean clone"
+        } else {
+            "clean local git clone"
+        }
         commit = $sourceCommit
+        github_repository = $env:GITHUB_REPOSITORY
+        github_run_id = $env:GITHUB_RUN_ID
+        github_workflow_ref = $env:GITHUB_WORKFLOW_REF
         python = (& $venvPython --version 2>&1).ToString()
         runner_os = $env:RUNNER_OS
         elapsed_seconds = $elapsed
