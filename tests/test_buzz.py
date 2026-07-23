@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import io
 import json
 from pathlib import Path
+from typing import Any
 import unittest
 from unittest.mock import patch
 
@@ -13,7 +14,10 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from permitmesh.buzz import (
     authorize_buzz,
+    authorize_buzz_compute,
+    compute_buzz_compute_context_mac,
     compute_buzz_context_mac,
+    validate_buzz_compute_context,
     validate_buzz_context,
 )
 from permitmesh.cli import main
@@ -32,10 +36,41 @@ class BuzzContextTests(unittest.TestCase):
         self.contract = load_example("contract.valid.json")
         self.request = load_example("request.allowed.json")
         self.context = load_example("buzz-context.valid.json")
+        self.compute_context = load_example("buzz-compute-context.valid.json")
         self.context_key = b"permitmesh-public-conformance-key-not-secret"
         self.community_uri = "wss://relay.example.com/permitmesh"
         self.repository_event_id = "b" * 64
         self.now = datetime(2026, 7, 23, 12, tzinfo=timezone.utc)
+        self.allowed_compute_members = frozenset(
+            {self.compute_context["member_pubkey"]}
+        )
+        self.allowed_mesh_owners = frozenset({self.compute_context["mesh_owner_id"]})
+        self.allowed_models = frozenset({self.compute_context["model_id"]})
+
+    def authorize_compute(
+        self,
+        compute_context: dict | None = None,
+        **overrides: object,
+    ):
+        options: dict[str, Any] = {
+            "context_auth_key": self.context_key,
+            "expected_community_uri": self.community_uri,
+            "expected_repository_announcement_event_id": self.repository_event_id,
+            "allowed_compute_member_pubkeys": self.allowed_compute_members,
+            "allowed_mesh_owner_ids": self.allowed_mesh_owners,
+            "allowed_model_ids": self.allowed_models,
+            "max_input_tokens": 2048,
+            "max_output_tokens": 512,
+            "now": self.now,
+        }
+        options.update(overrides)
+        return authorize_buzz_compute(
+            self.contract,
+            self.request,
+            self.context,
+            self.compute_context if compute_context is None else compute_context,
+            **options,
+        )
 
     def test_valid_context_allows_in_scope_request(self) -> None:
         decision = authorize_buzz(
@@ -50,6 +85,201 @@ class BuzzContextTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.violations, ())
         self.assertIn("buzz_context", decision.checks)
+
+    def test_valid_shared_compute_route_allows_in_scope_request(self) -> None:
+        decision = self.authorize_compute()
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.violations, ())
+        self.assertIn("buzz_shared_compute", decision.checks)
+
+    def test_shared_compute_schema_and_runtime_accept_same_fixture(self) -> None:
+        validator = self.compute_context_validator()
+        self.assertTrue(validator.is_valid(self.compute_context))
+        self.assertEqual(validate_buzz_compute_context(self.compute_context), ())
+
+    def test_shared_compute_required_field_deletions_never_false_allow(self) -> None:
+        validator = self.compute_context_validator()
+        for field in self.compute_context:
+            with self.subTest(field=field):
+                context = deepcopy(self.compute_context)
+                del context[field]
+                self.assertFalse(validator.is_valid(context))
+                decision = self.authorize_compute(context)
+                self.assertFalse(decision.allowed)
+
+    def test_shared_compute_schema_invalid_types_never_false_allow(self) -> None:
+        validator = self.compute_context_validator()
+        for field in self.compute_context:
+            for value in MUTATION_VALUES:
+                with self.subTest(field=field, value=repr(value)):
+                    context = deepcopy(self.compute_context)
+                    context[field] = value
+                    if not validator.is_valid(context):
+                        self.assertNotEqual(
+                            validate_buzz_compute_context(context),
+                            (),
+                        )
+
+    def test_shared_compute_route_identity_and_model_are_allowlisted(self) -> None:
+        cases = (
+            (
+                "allowed_compute_member_pubkeys",
+                frozenset({"0" * 64}),
+                "member_pubkey is not allowed",
+            ),
+            (
+                "allowed_mesh_owner_ids",
+                frozenset({"1" * 64}),
+                "mesh_owner_id is not allowed",
+            ),
+            (
+                "allowed_model_ids",
+                frozenset({"different/model:Q4_K_M"}),
+                "model_id is not allowed",
+            ),
+        )
+        for field, value, fragment in cases:
+            with self.subTest(field=field):
+                decision = self.authorize_compute(**{field: value})
+                self.assertFalse(decision.allowed)
+                self.assertTrue(
+                    any(fragment in item for item in decision.violations),
+                    decision.violations,
+                )
+
+    def test_shared_compute_requires_verified_fail_closed_route(self) -> None:
+        for field in (
+            "membership_verified",
+            "owner_binding_verified",
+            "endpoint_binding_verified",
+            "roster_enforced",
+            "transport_policy_checked",
+            "status_fresh",
+        ):
+            with self.subTest(field=field):
+                context = deepcopy(self.compute_context)
+                context[field] = False
+                context["compute_context_mac"] = compute_buzz_compute_context_mac(
+                    context, self.context_key
+                )
+                decision = self.authorize_compute(context)
+                self.assertFalse(decision.allowed)
+                self.assertIn(
+                    f"buzz compute {field} must be true",
+                    decision.violations,
+                )
+
+    def test_shared_compute_owner_id_is_derived_from_verifying_key(self) -> None:
+        context = deepcopy(self.compute_context)
+        context["mesh_owner_id"] = "1" * 64
+        context["compute_context_mac"] = compute_buzz_compute_context_mac(
+            context, self.context_key
+        )
+        decision = self.authorize_compute(
+            context,
+            allowed_mesh_owner_ids=frozenset({"1" * 64}),
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "buzz compute mesh_owner_id does not match mesh_owner_verifying_key",
+            decision.violations,
+        )
+
+    def test_shared_compute_context_is_bound_to_base_context(self) -> None:
+        for field, value, fragment in (
+            (
+                "contract_digest",
+                "0" * 64,
+                "contract_digest does not match",
+            ),
+            (
+                "base_context_mac",
+                "1" * 64,
+                "base_context_mac does not match",
+            ),
+        ):
+            with self.subTest(field=field):
+                context = deepcopy(self.compute_context)
+                context[field] = value
+                context["compute_context_mac"] = compute_buzz_compute_context_mac(
+                    context, self.context_key
+                )
+                decision = self.authorize_compute(context)
+                self.assertFalse(decision.allowed)
+                self.assertTrue(
+                    any(fragment in item for item in decision.violations),
+                    decision.violations,
+                )
+
+    def test_shared_compute_context_mac_is_enforced(self) -> None:
+        context = deepcopy(self.compute_context)
+        context["input_tokens"] = 1
+        decision = self.authorize_compute(context)
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "buzz compute context_mac authentication failed",
+            decision.violations,
+        )
+
+    def test_shared_compute_token_limits_are_enforced(self) -> None:
+        for field, maximum in (("input_tokens", 2048), ("output_tokens", 512)):
+            with self.subTest(field=field):
+                context = deepcopy(self.compute_context)
+                context[field] = maximum + 1
+                context["compute_context_mac"] = compute_buzz_compute_context_mac(
+                    context, self.context_key
+                )
+                decision = self.authorize_compute(context)
+                self.assertFalse(decision.allowed)
+                self.assertTrue(
+                    any(
+                        f"{field} exceeds the configured limit" in item
+                        for item in decision.violations
+                    ),
+                    decision.violations,
+                )
+
+    def test_shared_compute_status_and_context_freshness_are_enforced(self) -> None:
+        cases = (
+            (
+                {"status_created_at": "2026-07-23T11:57:59Z"},
+                "mesh status is older than 120 seconds",
+            ),
+            (
+                {"verified_at": "2026-07-23T11:57:59Z"},
+                "verification is older than two minutes",
+            ),
+            (
+                {"verified_at": "2026-07-23T12:00:01Z"},
+                "verified_at must not be in the future",
+            ),
+        )
+        for changes, fragment in cases:
+            with self.subTest(fragment=fragment):
+                context = deepcopy(self.compute_context)
+                context.update(changes)
+                context["compute_context_mac"] = compute_buzz_compute_context_mac(
+                    context, self.context_key
+                )
+                decision = self.authorize_compute(context)
+                self.assertFalse(decision.allowed)
+                self.assertTrue(
+                    any(fragment in item for item in decision.violations),
+                    decision.violations,
+                )
+
+    def test_shared_compute_model_integrity_claim_stays_advertised_only(self) -> None:
+        context = deepcopy(self.compute_context)
+        context["model_integrity"] = "attested_weights"
+        context["compute_context_mac"] = compute_buzz_compute_context_mac(
+            context, self.context_key
+        )
+        decision = self.authorize_compute(context)
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "buzz compute model_integrity must be 'advertised_only'",
+            decision.violations,
+        )
 
     def test_context_is_strict_and_fail_closed(self) -> None:
         context = deepcopy(self.context)
@@ -382,6 +612,15 @@ class BuzzContextTests(unittest.TestCase):
         )
         return Draft202012Validator(schema, format_checker=FormatChecker())
 
+    @staticmethod
+    def compute_context_validator() -> Draft202012Validator:
+        schema = json.loads(
+            (ROOT / "schema" / "permitmesh-buzz-compute-context.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return Draft202012Validator(schema, format_checker=FormatChecker())
+
     def test_cli_authorize_buzz(self) -> None:
         stdout = io.StringIO()
         stderr = io.StringIO()
@@ -409,6 +648,52 @@ class BuzzContextTests(unittest.TestCase):
                     self.community_uri,
                     "--expected-repository-event-id",
                     self.repository_event_id,
+                    "--evaluation-time",
+                    "2026-07-23T12:00:00Z",
+                ]
+            )
+        self.assertEqual(code, 0)
+        self.assertIn('"allowed": true', stdout.getvalue())
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_cli_authorize_buzz_compute(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "PERMITMESH_BUZZ_CONTEXT_KEY": (
+                        "permitmesh-public-conformance-key-not-secret"
+                    )
+                },
+            ),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            code = main(
+                [
+                    "authorize-buzz-compute",
+                    str(ROOT / "examples" / "contract.valid.json"),
+                    str(ROOT / "examples" / "request.allowed.json"),
+                    str(ROOT / "examples" / "buzz-context.valid.json"),
+                    str(ROOT / "examples" / "buzz-compute-context.valid.json"),
+                    "--context-key-env",
+                    "PERMITMESH_BUZZ_CONTEXT_KEY",
+                    "--expected-community-uri",
+                    self.community_uri,
+                    "--expected-repository-event-id",
+                    self.repository_event_id,
+                    "--allowed-compute-member-pubkey",
+                    self.compute_context["member_pubkey"],
+                    "--allowed-mesh-owner-id",
+                    self.compute_context["mesh_owner_id"],
+                    "--allowed-model-id",
+                    self.compute_context["model_id"],
+                    "--max-input-tokens",
+                    "2048",
+                    "--max-output-tokens",
+                    "512",
                     "--evaluation-time",
                     "2026-07-23T12:00:00Z",
                 ]

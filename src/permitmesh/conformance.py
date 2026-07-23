@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .buzz import authorize_buzz
+from .buzz import authorize_buzz, authorize_buzz_compute
 from .policy import (
     IMPLEMENTATION_VERSION,
     RFC3339_PATTERN,
@@ -151,6 +151,95 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
                     expected_repository_event_id
                 ),
                 now=buzz_now,
+                consumed_nonces=(
+                    frozenset(consumed_nonces) if consumed_nonces is not None else None
+                ),
+            )
+        elif operation == "authorize_buzz_compute":
+            try:
+                context = load_json_file(
+                    _fixture_path(suite_dir, case.get("buzz_context"))
+                )
+                compute_context = load_json_file(
+                    _fixture_path(suite_dir, case.get("buzz_compute_context"))
+                )
+            except ValueError as exc:
+                detail = str(exc).split(": ", 1)[-1]
+                raise ValueError(
+                    f"buzz compute context fixture malformed: {detail}"
+                ) from exc
+            context_auth_key = case.get("buzz_context_auth_key")
+            if (
+                not isinstance(context_auth_key, str)
+                or len(context_auth_key.encode("utf-8")) < 32
+            ):
+                raise ValueError(
+                    "buzz_context_auth_key must encode to at least 32 bytes"
+                )
+            expected_community_uri = case.get("buzz_expected_community_uri")
+            if not isinstance(expected_community_uri, str):
+                raise ValueError("buzz_expected_community_uri must be a string")
+            expected_repository_event_id = case.get("buzz_expected_repository_event_id")
+            if not isinstance(expected_repository_event_id, str):
+                raise ValueError("buzz_expected_repository_event_id must be a string")
+
+            allowlist_fields = (
+                "buzz_allowed_compute_member_pubkeys",
+                "buzz_allowed_mesh_owner_ids",
+                "buzz_allowed_model_ids",
+            )
+            allowlists: dict[str, frozenset[str]] = {}
+            for field in allowlist_fields:
+                values = case.get(field)
+                if (
+                    not isinstance(values, list)
+                    or not values
+                    or not all(isinstance(value, str) for value in values)
+                    or len(values) != len(set(values))
+                ):
+                    raise ValueError(f"{field} must be a non-empty unique string array")
+                allowlists[field] = frozenset(values)
+
+            max_input_tokens = case.get("buzz_max_input_tokens")
+            max_output_tokens = case.get("buzz_max_output_tokens")
+            if (
+                not isinstance(max_input_tokens, int)
+                or isinstance(max_input_tokens, bool)
+                or max_input_tokens < 1
+            ):
+                raise ValueError("buzz_max_input_tokens must be a positive integer")
+            if (
+                not isinstance(max_output_tokens, int)
+                or isinstance(max_output_tokens, bool)
+                or max_output_tokens < 1
+            ):
+                raise ValueError("buzz_max_output_tokens must be a positive integer")
+
+            consumed_nonces = case.get("consumed_nonces")
+            if consumed_nonces is not None and (
+                not isinstance(consumed_nonces, list)
+                or not all(isinstance(nonce, str) for nonce in consumed_nonces)
+                or len(consumed_nonces) != len(set(consumed_nonces))
+            ):
+                raise ValueError("consumed_nonces must be a unique string array")
+            decision = authorize_buzz_compute(
+                contract,
+                request,
+                context,
+                compute_context,
+                context_auth_key=context_auth_key.encode("utf-8"),
+                expected_community_uri=expected_community_uri,
+                expected_repository_announcement_event_id=(
+                    expected_repository_event_id
+                ),
+                allowed_compute_member_pubkeys=allowlists[
+                    "buzz_allowed_compute_member_pubkeys"
+                ],
+                allowed_mesh_owner_ids=allowlists["buzz_allowed_mesh_owner_ids"],
+                allowed_model_ids=allowlists["buzz_allowed_model_ids"],
+                max_input_tokens=max_input_tokens,
+                max_output_tokens=max_output_tokens,
+                now=now.astimezone(timezone.utc),
                 consumed_nonces=(
                     frozenset(consumed_nonces) if consumed_nonces is not None else None
                 ),

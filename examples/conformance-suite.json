@@ -406,6 +406,103 @@
       "consumed_nonces": [],
       "expected_outcome": "deny",
       "expected_violations_contain": ["do not match an approved constraint"]
+    },
+    {
+      "id": "allow-trusted-buzz-shared-compute-route",
+      "operation": "authorize_buzz_compute",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_compute_context": "buzz-compute-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "buzz_allowed_compute_member_pubkeys": [
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ],
+      "buzz_allowed_mesh_owner_ids": [
+        "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc"
+      ],
+      "buzz_allowed_model_ids": [
+        "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M"
+      ],
+      "buzz_max_input_tokens": 2048,
+      "buzz_max_output_tokens": 512,
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "allow"
+    },
+    {
+      "id": "deny-unapproved-buzz-compute-member",
+      "operation": "authorize_buzz_compute",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_compute_context": "buzz-compute-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "buzz_allowed_compute_member_pubkeys": [
+        "0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "buzz_allowed_mesh_owner_ids": [
+        "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc"
+      ],
+      "buzz_allowed_model_ids": [
+        "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M"
+      ],
+      "buzz_max_input_tokens": 2048,
+      "buzz_max_output_tokens": 512,
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["member_pubkey is not allowed"]
+    },
+    {
+      "id": "deny-unapproved-buzz-compute-model",
+      "operation": "authorize_buzz_compute",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_compute_context": "buzz-compute-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "buzz_allowed_compute_member_pubkeys": [
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ],
+      "buzz_allowed_mesh_owner_ids": [
+        "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc"
+      ],
+      "buzz_allowed_model_ids": ["different/model:Q4_K_M"],
+      "buzz_max_input_tokens": 2048,
+      "buzz_max_output_tokens": 512,
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["model_id is not allowed"]
+    },
+    {
+      "id": "deny-buzz-compute-token-budget-overrun",
+      "operation": "authorize_buzz_compute",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_compute_context": "buzz-compute-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "buzz_allowed_compute_member_pubkeys": [
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ],
+      "buzz_allowed_mesh_owner_ids": [
+        "02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc"
+      ],
+      "buzz_allowed_model_ids": [
+        "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M"
+      ],
+      "buzz_max_input_tokens": 1000,
+      "buzz_max_output_tokens": 512,
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["input_tokens exceeds the configured limit"]
     }
   ]
 }

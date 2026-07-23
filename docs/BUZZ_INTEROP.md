@@ -75,6 +75,44 @@ binding mismatch fail closed.
 not work performed by the PermitMesh library. An unrestricted agent must never
 be allowed to populate this context for itself.
 
+## Optional shared-compute route profile
+
+Buzz now exposes a shared-compute path in which relay members can advertise a
+local model and agents can use an automatically selected live model. The
+official implementation uses member-signed status notes, a separate MeshLLM
+owner key, signatures over member/owner and member/endpoint bindings, current
+relay membership for admission, a 120-second routing freshness window, and
+locally constrained Iroh transport relays.
+
+PermitMesh remains independent of that runtime. The optional
+`authorize-buzz-compute` profile binds a consequential action decision to one
+gateway-verified compute route:
+
+```powershell
+$env:PERMITMESH_BUZZ_CONTEXT_KEY = "permitmesh-public-conformance-key-not-secret"
+permitmesh authorize-buzz-compute `
+  examples\contract.valid.json `
+  examples\request.allowed.json `
+  examples\buzz-context.valid.json `
+  examples\buzz-compute-context.valid.json `
+  --context-key-env PERMITMESH_BUZZ_CONTEXT_KEY `
+  --expected-community-uri wss://relay.example.com/permitmesh `
+  --expected-repository-event-id bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb `
+  --allowed-compute-member-pubkey eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee `
+  --allowed-mesh-owner-id 02d449a31fbb267c8f352e9968a79e3e5fc95c1bbeaa502fd6454ebde5a4bedc `
+  --allowed-model-id unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M `
+  --max-input-tokens 2048 `
+  --max-output-tokens 512 `
+  --evaluation-time 2026-07-23T12:00:00Z
+```
+
+The profile intentionally does not claim that community membership is
+task-scoped authorization, that a serving member cannot read prompts, or that
+an advertised model ID proves which weights executed. It records
+`prompt_visibility=serving_member` and
+`model_integrity=advertised_only` so integrations cannot silently upgrade
+those claims.
+
 ## Layer ownership
 
 | Layer | Responsible component | PermitMesh claim |
@@ -86,6 +124,9 @@ be allowed to populate this context for itself.
 | Task path, capability, budget, approval, claim, and fence policy | PermitMesh evaluator | Implemented as a policy decision |
 | Nonce consumption and tool execution | Tool or git enforcement point | Not implemented |
 | Durable execution receipt | Integration | Declared receipt checks only |
+| Mesh membership, status, owner, endpoint, and transport verification | Buzz/MeshLLM integration | Required as fresh trusted facts |
+| Allowed serving members, owner IDs, model IDs, and token ceilings | PermitMesh evaluator | Implemented as a policy decision |
+| Prompt secrecy from the serving member and model-weight attestation | Deployment/runtime | Not claimed |
 
 ## Conformance proof
 
@@ -112,6 +153,13 @@ approval-execution, and job-coordination work. The repository contains job
 protocol constants and readers, but the PermitMesh integration does not depend
 on a job-event emitter.
 
+The official shared-compute implementation was reviewed at Buzz main commit
+`5afa16157a63c71f2cd8a80aa7276de28ce1c54c`; its mesh feature entered through
+commit `54638ff4bb5af2d3d3759b44118b43052f814bb1` and pins MeshLLM `v0.73.1`.
+The source is stronger than the launch copy about endpoint and membership
+binding, while remaining explicit that prompts are visible to the serving
+member and model identity is advertised rather than weight-attested.
+
 That makes the compatibility adapter the bounded near-term wedge. A new event
 kind or upstream protocol proposal should wait for independent reproductions
 and a design-first discussion under Buzz's contribution process.
@@ -121,3 +169,7 @@ Primary references:
 - [Buzz project vision](https://github.com/block/buzz/blob/main/VISION_PROJECTS.md)
 - [NIP-OA](https://github.com/block/buzz/blob/main/docs/nips/NIP-OA.md)
 - [Buzz contribution guide](https://github.com/block/buzz/blob/main/CONTRIBUTING.md)
+- [Buzz shared-compute development proof](https://github.com/block/buzz/blob/main/docs/buzz-shared-compute-dev.md)
+- [Buzz mesh vision](https://github.com/block/buzz/blob/main/VISION_MESH.md)
+- [Buzz mesh discovery](https://github.com/block/buzz/blob/main/desktop/src-tauri/src/mesh_llm/discovery.rs)
+- [Buzz mesh transport policy](https://github.com/block/buzz/blob/main/desktop/src-tauri/src/mesh_llm/transport_policy.rs)

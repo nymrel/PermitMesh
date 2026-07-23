@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from .buzz import authorize_buzz
+from .buzz import authorize_buzz, authorize_buzz_compute
 from .conformance import load_json_file, run_conformance
 from .policy import (
     RFC3339_PATTERN,
@@ -85,6 +85,55 @@ def build_parser() -> argparse.ArgumentParser:
         help="Expected repository-announcement event id.",
     )
     buzz_parser.add_argument(
+        "--evaluation-time",
+        type=_evaluation_time,
+        required=True,
+        help="Timezone-aware trusted evaluator time.",
+    )
+
+    buzz_compute_parser = subparsers.add_parser(
+        "authorize-buzz-compute",
+        help=(
+            "Evaluate one action against trusted Buzz work and shared-compute "
+            "route contexts."
+        ),
+    )
+    buzz_compute_parser.add_argument("contract")
+    buzz_compute_parser.add_argument("request")
+    buzz_compute_parser.add_argument("context")
+    buzz_compute_parser.add_argument("compute_context")
+    buzz_compute_parser.add_argument(
+        "--context-key-env",
+        required=True,
+        help="Name of the environment variable containing the context HMAC key.",
+    )
+    buzz_compute_parser.add_argument("--expected-community-uri", required=True)
+    buzz_compute_parser.add_argument(
+        "--expected-repository-event-id",
+        required=True,
+        help="Expected repository-announcement event id.",
+    )
+    buzz_compute_parser.add_argument(
+        "--allowed-compute-member-pubkey",
+        action="append",
+        required=True,
+        help="Allowed serving member Nostr pubkey; repeat for additional members.",
+    )
+    buzz_compute_parser.add_argument(
+        "--allowed-mesh-owner-id",
+        action="append",
+        required=True,
+        help="Allowed MeshLLM owner id; repeat for additional owners.",
+    )
+    buzz_compute_parser.add_argument(
+        "--allowed-model-id",
+        action="append",
+        required=True,
+        help="Allowed canonical model id; repeat for additional models.",
+    )
+    buzz_compute_parser.add_argument("--max-input-tokens", type=int, required=True)
+    buzz_compute_parser.add_argument("--max-output-tokens", type=int, required=True)
+    buzz_compute_parser.add_argument(
         "--evaluation-time",
         type=_evaluation_time,
         required=True,
@@ -188,6 +237,38 @@ def main(argv: list[str] | None = None) -> int:
                 expected_repository_announcement_event_id=(
                     args.expected_repository_event_id
                 ),
+                now=args.evaluation_time,
+            )
+            _emit(decision.to_dict())
+            return 0 if decision.allowed else 3
+
+        if args.command == "authorize-buzz-compute":
+            request = _load_json(args.request)
+            context = _load_json(args.context)
+            compute_context = _load_json(args.compute_context)
+            context_key = os.environ.get(args.context_key_env)
+            if context_key is None:
+                raise ValueError(
+                    f"context authentication key environment variable is not set: "
+                    f"{args.context_key_env}"
+                )
+            decision = authorize_buzz_compute(
+                contract,
+                request,
+                context,
+                compute_context,
+                context_auth_key=context_key.encode("utf-8"),
+                expected_community_uri=args.expected_community_uri,
+                expected_repository_announcement_event_id=(
+                    args.expected_repository_event_id
+                ),
+                allowed_compute_member_pubkeys=frozenset(
+                    args.allowed_compute_member_pubkey
+                ),
+                allowed_mesh_owner_ids=frozenset(args.allowed_mesh_owner_id),
+                allowed_model_ids=frozenset(args.allowed_model_id),
+                max_input_tokens=args.max_input_tokens,
+                max_output_tokens=args.max_output_tokens,
                 now=args.evaluation_time,
             )
             _emit(decision.to_dict())

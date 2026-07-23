@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/JalenBuildsHub/PermitMesh/main/schema/permitmesh-buzz-compute-context.schema.json",
+  "title": "PermitMesh Trusted Buzz Shared-Compute Context 0.1",
+  "description": "Gateway-verified facts about the exact Buzz MeshLLM route used by an agent. Schema validity is not signature, endpoint, model-weight, transport, or usage verification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "compute_context_version",
+    "contract_digest",
+    "base_context_mac",
+    "producer_id",
+    "compute_context_mac",
+    "membership_event_id",
+    "status_event_id",
+    "status_created_at",
+    "member_pubkey",
+    "mesh_owner_id",
+    "mesh_owner_verifying_key",
+    "endpoint_id",
+    "endpoint_token_sha256",
+    "model_id",
+    "membership_verified",
+    "owner_binding_verified",
+    "endpoint_binding_verified",
+    "roster_enforced",
+    "transport_policy_checked",
+    "status_fresh",
+    "input_tokens",
+    "output_tokens",
+    "prompt_visibility",
+    "model_integrity",
+    "verified_at"
+  ],
+  "properties": {
+    "compute_context_version": {"const": "0.1"},
+    "contract_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "base_context_mac": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "producer_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:/-]{3,128}$"
+    },
+    "compute_context_mac": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "membership_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "status_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "status_created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "member_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mesh_owner_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mesh_owner_verifying_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "endpoint_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{16,128}$"
+    },
+    "endpoint_token_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "model_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+~-]{0,511}$"
+    },
+    "membership_verified": {"const": true},
+    "owner_binding_verified": {"const": true},
+    "endpoint_binding_verified": {"const": true},
+    "roster_enforced": {"const": true},
+    "transport_policy_checked": {"const": true},
+    "status_fresh": {"const": true},
+    "input_tokens": {"type": "integer", "minimum": 0},
+    "output_tokens": {"type": "integer", "minimum": 0},
+    "prompt_visibility": {"const": "serving_member"},
+    "model_integrity": {"const": "advertised_only"},
+    "verified_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    }
+  }
+}

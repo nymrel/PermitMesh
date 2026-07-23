@@ -21,6 +21,8 @@
 | Buzz's draft NIP-OA constrains event kind and self-declared timestamps but does not enforce wall-clock expiry. | fact | [NIP-OA](https://github.com/block/buzz/blob/main/docs/nips/NIP-OA.md) | 2026-07-23 | live verified |
 | Buzz now documents git hosting and relay-enforced `buzz-protect` repository rules. | fact | [Buzz project vision](https://github.com/block/buzz/blob/main/VISION_PROJECTS.md) | 2026-07-23 | live verified |
 | Buzz's merge coordination and approval-execution layers remain active work. | fact | [Buzz project vision](https://github.com/block/buzz/blob/main/VISION_PROJECTS.md) | 2026-07-23 | live verified |
+| Buzz shared compute uses member-signed discovery, owner and endpoint bindings, current membership admission, and a 120-second routing freshness window. | fact | [Buzz shared-compute proof](https://github.com/block/buzz/blob/main/docs/buzz-shared-compute-dev.md) and source at `5afa161` | 2026-07-23 | live source verified |
+| Buzz shared-compute prompts are visible to the serving member, and the advertised model ID is not a model-weight attestation. | fact | [Buzz mesh vision](https://github.com/block/buzz/blob/main/VISION_MESH.md) and current source | 2026-07-23 | live source verified |
 | Mature systems and active 2026 Internet-Drafts already cover general policy, identity, task authorization, delegation, approval, and signed receipts. | fact | [Prior-art matrix](PRIOR_ART.md) | 2026-07-23 | primary-source review |
 | Exact task permits could improve trustworthy agent participation in Buzz-like workspaces. | inference | protocol gap plus Jalen Studio operating experience | 2026-07-23 | unverified externally |
 | PermitMesh can become an interoperable community standard. | aspiration | none yet | 2026-07-23 | unverified |
@@ -152,6 +154,8 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 | Name or framing fails to resonate | medium | test with maintainers before branding spend | repeated confusion in three interviews |
 | Protocol becomes over-generalized | medium | keep the first fixtures code-work specific | external demand for a second domain |
 | Attention arrives without adoption | medium | optimize for verified runs, not impressions | sustained external conformance receipts |
+| Shared compute turns community membership into overly broad model access | medium | keep PermitMesh member/owner/model allowlists and token ceilings additive and fail closed | native task-scoped compute grants with equivalent receipts |
+| A serving member or substituted model sees sensitive context | high | prohibit secrets in portable demos; record serving-member visibility and advertised-only model integrity | independently verified confidential-compute or model-attestation path |
 
 ## Independent review
 

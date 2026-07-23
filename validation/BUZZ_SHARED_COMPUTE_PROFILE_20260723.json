@@ -1,0 +1,49 @@
+{
+  "schema_version": "permitmesh_buzz_shared_compute_profile_receipt.v1",
+  "status": "local_validation_passed",
+  "independence": "PermitMesh is an independent, optional policy profile and is not endorsed by Block, Buzz, or MeshLLM.",
+  "official_source": {
+    "repository": "https://github.com/block/buzz",
+    "main_commit": "5afa16157a63c71f2cd8a80aa7276de28ce1c54c",
+    "shared_compute_commit": "54638ff4bb5af2d3d3759b44118b43052f814bb1",
+    "mesh_llm_version": "0.73.1",
+    "mesh_llm_source_commit": "43103c5c40292be688ac0261129bcbab0e7b9132",
+    "reviewed_at": "2026-07-23T22:42:44Z"
+  },
+  "implemented_checks": [
+    "domain-separated HMAC over strict compute-route context",
+    "active contract and base Buzz-context binding",
+    "MeshLLM owner id derivation from the verifying key",
+    "explicit serving-member, owner-id, and model-id allowlists",
+    "verified membership, owner binding, endpoint binding, roster enforcement, and transport-policy assertions",
+    "120-second mesh-status freshness",
+    "two-minute trusted compute-context freshness",
+    "input and output token ceilings",
+    "serving-member prompt visibility and advertised-only model integrity"
+  ],
+  "validation": {
+    "unit_tests": {"passed": 106, "failed": 0},
+    "portable_conformance": {
+      "passed": 45,
+      "failed": 0,
+      "receipt": "validation/conformance-buzz-compute-local.json",
+      "receipt_sha256": "4626aaacf5471c20ac96214768c43f04d02bb08032c6a29c2a99da5cfb0c9b44"
+    },
+    "ruff": "passed",
+    "mypy_src": "passed"
+  },
+  "not_claimed": [
+    "Nostr or MeshLLM signature verification by PermitMesh",
+    "prompt secrecy from the serving member",
+    "model-weight attestation",
+    "transport inspection or encryption verification",
+    "trusted token-meter generation",
+    "inference proxying or tool execution enforcement"
+  ],
+  "release_gate": {
+    "package_publication": "held",
+    "public_posts": "held",
+    "direct_outreach": "held",
+    "reason": "Existing signing and council gates remain open."
+  }
+}
