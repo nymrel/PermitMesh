@@ -91,8 +91,14 @@ try {
         enforcement_boundary = "policy-decision-only; no tool execution"
     }
     New-Item -ItemType Directory -Force -Path (Split-Path $receiptPath) | Out-Null
-    $result | ConvertTo-Json | Set-Content -Encoding utf8 $receiptPath
-    $result | ConvertTo-Json
+    $resultJson = $result | ConvertTo-Json
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText(
+        $receiptPath,
+        $resultJson + [Environment]::NewLine,
+        $utf8NoBom
+    )
+    $resultJson
 }
 finally {
     if ($contextKeySet) {
