@@ -158,6 +158,22 @@ emerging SCITT/WIMSE Permit work.
 See `schema/permitmesh-conformance-receipt.schema.json` and
 `examples/conformance-suite.json`.
 
+## Trusted Buzz context
+
+`permitmesh authorize-buzz` composes the core policy decision with a strict
+context supplied by a trusted Buzz integration. The context binds the
+contract's issuer and subject to verified owner and agent public keys, and
+binds the action request to a Buzz repository, ref, and channel.
+
+The integration, not PermitMesh, must verify Nostr event integrity and
+signatures, the NIP-OA owner attestation, the repository announcement, and
+current `buzz-protect` state. The context must be verified no more than five
+minutes before evaluation and must not be future-dated. Unknown or missing
+fields fail closed.
+
+See `schema/permitmesh-buzz-context.schema.json` and
+`docs/BUZZ_INTEROP.md`.
+
 ## Completion evidence
 
 `permitmesh verify-completion` checks a declared completion report against
@@ -171,8 +187,11 @@ execution and artifact systems.
 
 ## Compatibility questions for upstream discussion
 
-1. Should permits be replaceable application data, a Buzz custom kind, or a new interoperable NIP?
-2. Should an agent action carry the permit digest, full permit, or a relay reference?
+1. Is a transport event useful after the compatibility adapter has independent
+   reproductions, or should permits remain outside the relay?
+2. Should an agent action carry the permit digest, full permit, or a relay
+   reference?
 3. Which actor supplies trusted receipt time for expiry?
-4. Should NIP-OA attest owner provenance while PermitMesh constrains each task, or should the formats converge?
+4. Should NIP-OA attest owner provenance while PermitMesh constrains each task,
+   or should the formats converge?
 5. Where should revocation and the current fencing generation live?

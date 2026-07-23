@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from .buzz import authorize_buzz
 from .conformance import load_json_file, run_conformance
 from .policy import (
     RFC3339_PATTERN,
@@ -59,6 +60,19 @@ def build_parser() -> argparse.ArgumentParser:
     authorize_parser.add_argument("contract")
     authorize_parser.add_argument("request")
     authorize_parser.add_argument(
+        "--evaluation-time",
+        type=_evaluation_time,
+        help="Trusted evaluator time override for deterministic tests and replay.",
+    )
+
+    buzz_parser = subparsers.add_parser(
+        "authorize-buzz",
+        help="Evaluate one action against a contract and trusted Buzz context.",
+    )
+    buzz_parser.add_argument("contract")
+    buzz_parser.add_argument("request")
+    buzz_parser.add_argument("context")
+    buzz_parser.add_argument(
         "--evaluation-time",
         type=_evaluation_time,
         help="Trusted evaluator time override for deterministic tests and replay.",
@@ -140,6 +154,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "authorize":
             request = _load_json(args.request)
             decision = authorize(contract, request, now=args.evaluation_time)
+            _emit(decision.to_dict())
+            return 0 if decision.allowed else 3
+
+        if args.command == "authorize-buzz":
+            request = _load_json(args.request)
+            context = _load_json(args.context)
+            decision = authorize_buzz(
+                contract,
+                request,
+                context,
+                now=args.evaluation_time,
+            )
             _emit(decision.to_dict())
             return 0 if decision.allowed else 3
 

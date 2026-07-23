@@ -8,7 +8,8 @@
 - As of: 2026-07-23
 - Project type: open_source
 - Owner: Jalen Studio
-- Reviewed: four-provider publication council completed; charter remains unadopted
+- Reviewed: latest full-context four-provider publication council is incomplete;
+  release and outreach remain held
 - Next review: after three external maintainer interviews or 2026-08-06
 
 ## Evidence state
@@ -18,6 +19,8 @@
 | Buzz treats humans and agents as independently keyed members in one signed event workspace. | fact | [Buzz vision](https://github.com/block/buzz/blob/main/VISION.md) | 2026-07-23 | live verified |
 | Buzz says tighter agent scoping remains important future work. | fact | [Jack Dorsey's launch post](https://x.com/jack) and project context | 2026-07-23 | operator-provided launch text |
 | Buzz's draft NIP-OA constrains event kind and self-declared timestamps but does not enforce wall-clock expiry. | fact | [NIP-OA](https://github.com/block/buzz/blob/main/docs/nips/NIP-OA.md) | 2026-07-23 | live verified |
+| Buzz now documents git hosting and relay-enforced `buzz-protect` repository rules. | fact | [Buzz project vision](https://github.com/block/buzz/blob/main/VISION_PROJECTS.md) | 2026-07-23 | live verified |
+| Buzz's merge coordination and approval-execution layers remain active work. | fact | [Buzz project vision](https://github.com/block/buzz/blob/main/VISION_PROJECTS.md) | 2026-07-23 | live verified |
 | Mature systems and active 2026 Internet-Drafts already cover general policy, identity, task authorization, delegation, approval, and signed receipts. | fact | [Prior-art matrix](PRIOR_ART.md) | 2026-07-23 | primary-source review |
 | Exact task permits could improve trustworthy agent participation in Buzz-like workspaces. | inference | protocol gap plus Jalen Studio operating experience | 2026-07-23 | unverified externally |
 | PermitMesh can become an interoperable community standard. | aspiration | none yet | 2026-07-23 | unverified |
@@ -112,8 +115,9 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 - Value exchange: maintainers receive safer delegation; runtimes receive a portable policy boundary; contributors receive an open conformance target.
 - Monetization or resource model: open protocol and reference core; potential future paid enforcement, policy authoring, compliance evidence, or hosted revocation only after adoption proof.
 - Distribution or adoption wedge: a narrow, runnable software-change profile
-  with adversarial fixtures, offered to agent-runtime and authorization
-  maintainers without claiming a new general authorization architecture.
+  with a fail-closed Buzz compatibility context, offered to agent-runtime and
+  authorization maintainers without claiming a new general authorization
+  architecture or proposing a new event kind prematurely.
 - Sustainability hypothesis: protocol credibility creates consulting or hosted-product opportunities without compromising the open core.
 
 ## Roadmap and gates
@@ -152,24 +156,27 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 ## Independent review
 
 - Drafter: Codex, GPT-5.6 Sol
-- Independent council: Claude Opus 4.8, Gemini 3.6 Flash via Antigravity,
-  Cursor Grok 4.5, and GPT-5.6 Sol
+- Requested independent council: Claude Opus 4.8, Gemini via Antigravity,
+  Cursor, and GPT-5.6 Sol
 - Review record: `reviews/FRONTIER_COUNCIL_REVIEW_20260723.md`
-- Council outcome: adopt the release candidate with conditions; do not publish
-  the original commit as-is
+- Council outcome: the earlier bounded review found material conditions, but
+  the latest full-context four-provider review is incomplete because two
+  provider lanes did not return valid evidence
 - Quality score: 76/100 self-assessed charter draft; council publication scores
   ranged from 68 to 88 and were not averaged
 - Material disagreement: one reviewer wanted external problem proof before
   public positioning; the owner ruling adopted that caution for Buzz outreach
-- Final ruling and owner: Jalen authorized end-to-end execution on 2026-07-23;
-  the North Star itself remains not adopted
+- Final ruling and owner: Jalen authorized continued implementation on
+  2026-07-23; publication, posts, tagging, and outreach remain gated on a
+  satisfactory council; the North Star itself remains not adopted
 
 ## Next exact campaign
 
 - Completion type: campaign
 - Owner or claim expectation: one PermitMesh writer under the live release claim.
-- Exact scope: close the council gates, publish the proof, recruit three maintainers,
-  and gate any Buzz discussion on one independent reaction.
+- Exact scope: validate the Buzz compatibility adapter, close the council
+  gates, then publish the proof and recruit three maintainers. Gate any direct
+  Buzz maintainer discussion on one independent reaction.
 - Non-goals: production enforcement, public security claims, paid hosting, Buzz fork.
 - Validation floor: clean-install CLI demo, all tests passing, schema validation, no false allow in adversarial fixtures, explicit unsigned-event behavior.
 - Stop conditions: upstream asks us to stop; name conflict creates material confusion; three maintainers find no portable-policy need; any known false allow remains unresolved.
@@ -178,7 +185,7 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 
 | Window | Outcome | Proof | Stop condition |
 | --- | --- | --- | --- |
-| Days 0–2 | Publish a crisp repo and 30-second allowed/denied demo after approval | public clone and reproducible CI | clean checkout fails |
+| Days 0–2 | After council approval, publish a crisp release and 30-second allowed/denied Buzz-context demo | public clone and reproducible CI | clean checkout fails |
 | Days 2–4 | Open one design-first Buzz discussion linking the gap, not pitching a product | maintainer response or acknowledged issue/discussion | contribution guidance says another venue |
 | Days 3–7 | Post one visual explanation and invite maintainers to break the policy | runnable fixtures and issue template | messaging implies endorsement |
 | Days 5–10 | Onboard three maintainers manually | redacted decision receipts | setup exceeds 10 minutes repeatedly |

@@ -6,7 +6,7 @@
   "project_name": "PermitMesh",
   "project_type": "open_source",
   "lifecycle_state": "idea",
-  "lifecycle_detail": "Public v0.1 proof released; external validation and any Buzz discussion remain pending.",
+  "lifecycle_detail": "Public v0.1 proof released; the Buzz compatibility adapter is local, and release plus outreach remain council-gated.",
   "evidence_status": "draft",
   "rubric_applicability": "applicable",
   "north_star": "Help open-source maintainers safely delegate real work to agents by making authority narrow, portable, inspectable, and provable at every action boundary.",
@@ -30,6 +30,14 @@
       "claim": "Buzz draft NIP-OA does not enforce wall-clock expiry and requires independent freshness controls.",
       "class": "fact",
       "source": "https://github.com/block/buzz/blob/main/docs/nips/NIP-OA.md",
+      "as_of": "2026-07-23",
+      "verification": "live_verified",
+      "fresh_until": "2026-08-06"
+    },
+    {
+      "claim": "Buzz documents git hosting and relay-enforced buzz-protect repository rules while merge and approval execution remain active work.",
+      "class": "fact",
+      "source": "https://github.com/block/buzz/blob/main/VISION_PROJECTS.md",
       "as_of": "2026-07-23",
       "verification": "live_verified",
       "fresh_until": "2026-08-06"
@@ -134,7 +142,7 @@
     "Do not handle transactions in the first campaign."
   ],
   "economics_or_sustainability": "Open protocol and core, with possible future paid enforcement or compliance services only after adoption proof.",
-  "distribution_or_adoption_wedge": "A narrow runnable software-change profile with adversarial fixtures for agent-runtime and authorization maintainers.",
+  "distribution_or_adoption_wedge": "A narrow runnable software-change profile with a fail-closed Buzz context adapter and adversarial fixtures, without prematurely proposing a new event kind.",
   "governing_rulings": [],
   "risks": [
     {
@@ -172,8 +180,8 @@
     "completion_type": "campaign",
     "owner": "Jalen Studio, one PermitMesh writer",
     "scope": [
-      "Package the local proof",
-      "Publish after the council's prepublication gates pass",
+      "Validate the Buzz compatibility adapter",
+      "Publish only after the council's prepublication gates pass",
       "Recruit three maintainers",
       "Gate one respectful Buzz design discussion on independent reaction"
     ],
@@ -194,8 +202,8 @@
   "review": {
     "quality_score": 76,
     "review_status": "changes_required",
-    "reviewed_by": ["Codex", "Claude", "Antigravity", "Cursor"],
-    "models_used": ["GPT-5.6 Sol", "Claude Opus 4.8", "Gemini 3.6 Flash", "Cursor Grok 4.5"],
+    "reviewed_by": ["Codex", "Cursor"],
+    "models_used": ["GPT-5.6 Sol", "Cursor"],
     "rubric_scores": {
       "truth_and_evidence": 4,
       "beneficiary_and_progress": 4,
@@ -209,7 +217,7 @@
       "agent_executability": 4
     },
     "disagreements": ["External problem validation remains absent; one reviewer wanted that proof before public positioning."],
-    "final_ruling": "Proceed with the council-conditioned release campaign; keep Buzz outreach gated; do not adopt the North Star yet.",
+    "final_ruling": "Continue local implementation; hold release, posts, tagging, and outreach until the latest full-context council is complete and satisfactory; do not adopt the North Star yet.",
     "ruling_owner": "Jalen",
     "next_review": "2026-08-06"
   },
@@ -221,8 +229,13 @@
     },
     {
       "date": "2026-07-23",
-      "change": "Recorded four-provider publication review and end-to-end campaign authority without adopting the charter.",
+      "change": "Recorded the incomplete latest full-context council and kept release and outreach held.",
       "owner": "Jalen"
+    },
+    {
+      "date": "2026-07-23",
+      "change": "Added the local Buzz compatibility adapter as the bounded adoption wedge.",
+      "owner": "Codex for Jalen Studio"
     }
   ]
 }

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .buzz import authorize_buzz
 from .policy import (
     IMPLEMENTATION_VERSION,
     RFC3339_PATTERN,
@@ -96,6 +97,30 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
             decision = authorize(
                 contract,
                 request,
+                now=now.astimezone(timezone.utc),
+                consumed_nonces=(
+                    frozenset(consumed_nonces) if consumed_nonces is not None else None
+                ),
+            )
+        elif operation == "authorize_buzz":
+            try:
+                context = load_json_file(
+                    _fixture_path(suite_dir, case.get("buzz_context"))
+                )
+            except ValueError as exc:
+                detail = str(exc).split(": ", 1)[-1]
+                raise ValueError(f"buzz context fixture malformed: {detail}") from exc
+            consumed_nonces = case.get("consumed_nonces")
+            if consumed_nonces is not None and (
+                not isinstance(consumed_nonces, list)
+                or not all(isinstance(nonce, str) for nonce in consumed_nonces)
+                or len(consumed_nonces) != len(set(consumed_nonces))
+            ):
+                raise ValueError("consumed_nonces must be a unique string array")
+            decision = authorize_buzz(
+                contract,
+                request,
+                context,
                 now=now.astimezone(timezone.utc),
                 consumed_nonces=(
                     frozenset(consumed_nonces) if consumed_nonces is not None else None

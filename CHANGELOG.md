@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Add a strict, fail-closed Buzz context adapter that binds freshly verified
+  NIP-OA owner-agent provenance and repository protection facts to the
+  PermitMesh contract and action request.
+- Add a trusted-context schema, CLI command, integration guide, and six
+  adversarial interoperability fixtures.
+- Keep signature, attestation, and `buzz-protect` verification outside the
+  reference library and explicitly assigned to the trusted integration.
+
 ## 0.2.0 - 2026-07-23
 
 Security-boundary hardening release candidate.

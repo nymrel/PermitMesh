@@ -1,0 +1,773 @@
+{
+  "cases": [
+    {
+      "decision": {
+        "allowed": true,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": []
+      },
+      "expected_outcome": "allow",
+      "id": "allow-in-scope-edit",
+      "observed_outcome": "allow",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": true,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": []
+      },
+      "expected_outcome": "allow",
+      "id": "allow-at-not-before-boundary",
+      "observed_outcome": "allow",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "contract has expired"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-at-expiry-boundary",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "capability 'teleport' is not granted"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-unknown-action",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "subject_id does not match the active contract"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-wrong-subject",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "channel 'other/work' is outside scope"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-wrong-channel",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.path must be a safe relative path"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-parent-traversal",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.path is required for read"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-read-without-path",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.path must be a safe relative path"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-windows-drive-path",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.path must be a safe relative path"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-windows-short-name-path",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "636e4a2137313a7131cc5f1b3ec016ba6b7152564d928f83255bf52a0a9a3ca0",
+        "violations": [
+          "path 'src/permitmesh/policy.py' is outside allowed paths"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-single-segment-glob-descendant",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.operation is required for high-risk action 'deploy'",
+          "request.operation_nonce must be 16-128 safe characters",
+          "request.approvals must be a string array",
+          "action 'deploy' requires 1 approval(s) from the configured approvers"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-malformed-approvals",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "claim_id does not match the active contract"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-stale-claim",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "fencing_generation does not match the active contract"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-stale-fence",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.files_changed=21 exceeds max_files_changed=20",
+          "request.commands_used=101 exceeds max_commands=100",
+          "request.cost_usd=25.01 exceeds max_cost_usd=25"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-exceeded-budgets",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request contains unknown field: surprise"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-unknown-request-field",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "error": "request fixture malformed: non-standard JSON numeric constant: Infinity",
+      "expected_outcome": "malformed",
+      "id": "reject-nonfinite-number",
+      "observed_outcome": "malformed",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.action must be a known capability string"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-object-action",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "2fbc5693925ba113ba530d224bfb500fd87c181c128f62198adc8d14b3d03519",
+        "violations": [
+          "path 'docs/README.md' is outside allowed paths"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-root-pattern-nested-basename",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "ref 'feature/team/topic' is outside scope"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-single-segment-ref-descendant",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.cost_usd=25.0000000000000000001 exceeds max_cost_usd=25"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-exact-decimal-overage",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.path must be a safe relative path"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-dot-segment-path",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "error": "request fixture malformed: duplicate JSON object key: action",
+      "expected_outcome": "malformed",
+      "id": "reject-duplicate-json-key",
+      "observed_outcome": "malformed",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": true,
+        "checks": [
+          "validity_window",
+          "subject",
+          "claim_and_fence",
+          "required_commands",
+          "required_artifacts"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": []
+      },
+      "expected_outcome": "allow",
+      "id": "allow-complete-required-evidence",
+      "observed_outcome": "allow",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "claim_and_fence",
+          "required_commands",
+          "required_artifacts"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "missing required_commands: python -m unittest discover -s tests -v",
+          "missing required_artifacts: validation/permitmesh-demo.json"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-incomplete-required-evidence",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": true,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": []
+      },
+      "expected_outcome": "allow",
+      "id": "allow-bound-high-risk-operation-with-unused-nonce",
+      "observed_outcome": "allow",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "request.operation_nonce has already been consumed"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-replayed-high-risk-operation-nonce",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": true,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": []
+      },
+      "expected_outcome": "allow",
+      "id": "allow-trusted-buzz-context",
+      "observed_outcome": "allow",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz nip_oa_verified must be true at the trusted integration boundary"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-unverified-buzz-owner-attestation",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz owner_pubkey does not match contract issuer.id"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-buzz-owner-mismatch",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz protection_checked must be true at the trusted integration boundary"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-unchecked-buzz-protection",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz ref does not match the action request"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-buzz-ref-mismatch",
+      "observed_outcome": "deny",
+      "passed": true
+    },
+    {
+      "decision": {
+        "allowed": false,
+        "checks": [
+          "validity_window",
+          "subject",
+          "channel",
+          "capability",
+          "operation_binding",
+          "repository_ref_path",
+          "budgets",
+          "claim_and_fence",
+          "approval_gates",
+          "buzz_context"
+        ],
+        "contract_digest": "8ea8fd8307a5e05cb2c56e31a66edb6bb233a111c567cc72315a31219b14fe0a",
+        "violations": [
+          "buzz context contains unknown field: trusted"
+        ]
+      },
+      "expected_outcome": "deny",
+      "id": "deny-unknown-buzz-context-field",
+      "observed_outcome": "deny",
+      "passed": true
+    }
+  ],
+  "enforcement_boundary": "policy-decision-only; no tool execution",
+  "generated_at": "2026-07-23T19:46:51.700823Z",
+  "implementation": {
+    "name": "permitmesh",
+    "version": "0.2.0"
+  },
+  "receipt_version": "0.2",
+  "suite": {
+    "digest": "e12dbcd236082f9152f5d48c502ef027039b07d3744526f9719e38995606dc5d",
+    "name": "PermitMesh reference conformance suite",
+    "version": "0.2"
+  },
+  "summary": {
+    "failed": 0,
+    "passed": 33,
+    "total": 33
+  }
+}

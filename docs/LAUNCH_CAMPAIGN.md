@@ -7,7 +7,7 @@ repository-governance review, and release proof before publication
 
 - **Category:** software-change authorization profile and conformance lab
 - **One line:** PermitMesh makes repo, path, budget, approval, claim-fence, and required-proof constraints portable across agent runtimes.
-- **Proof:** a dependency-free evaluator, 75 unit tests, 27 adversarial
+- **Proof:** a dependency-free evaluator, 86 unit tests, 33 adversarial
   fixtures, and a machine-readable conformance receipt.
 - **Ask:** run it against a real workflow, state what actually enforced the decision, and report false allows or false denies.
 
@@ -26,15 +26,20 @@ Secondary:
 
 ## Launch sequence
 
-1. Publish the Apache-2.0 repo after the council's prepublication gates pass.
+1. Publish the release candidate only after the council's prepublication gates pass.
 2. Confirm the clean-install demo and CI on the public clone.
-3. Publish one proof-led launch note with the runnable conformance command.
-4. Personally invite three relevant maintainers to reproduce the suite.
+3. After council approval, publish one proof-led launch note with the runnable
+   conformance command.
+4. Tag or personally invite a small, relevant set of maintainers only when the
+   message gives them a concrete compatibility reason to engage.
 5. Wait for at least one independent maintainer reaction or reproduction.
 6. Only then open one design-first Buzz discussion, if the evidence still points there.
 7. Publish findings after 10-14 days, including reasons the idea may be wrong.
 
-Do not carpet-post communities, ask for stars, or describe the project as a security sandbox.
+Do not carpet-post communities, tag unrelated users, ask for stars, or
+describe the project as a security sandbox. All posts, tagging, and direct
+outreach remain held until the council approves the exact release candidate
+and campaign packet.
 
 ## X launch draft
 
@@ -73,7 +78,7 @@ No model decides. No vague “be careful” prompt.
 It is a PDP, not a sandbox or enforcement proxy, and it is not affiliated with
 Block, Buzz, or a standards body.
 
-The repo includes a candid prior-art matrix and 27-case conformance suite.
+The repo includes a candid prior-art matrix and 33-case conformance suite.
 We want maintainers to break the profile with real workflows.
 
 ## v0.2.0 update draft
@@ -85,7 +90,7 @@ nonce binding for high-risk operations.
 The evaluator checks nonce state but does not consume it. A real enforcement
 point must atomically consume the nonce and execute the exact operation.
 
-75 tests; 27/27 conformance. Still a policy-decision profile, not enforcement.
+86 tests; 33/33 conformance. Still a policy-decision profile, not enforcement.
 
 ## Upstream discussion draft
 
@@ -121,8 +126,8 @@ The campaign succeeds at five verified external authorization runs across at lea
 
 ## Authority boundary
 
-Jalen authorized the project lead to execute this campaign end to end on
-2026-07-23. Public repository creation and measured proof-led outreach are in
-scope after validation. The Buzz discussion remains evidence-gated on one
-independent maintainer reaction. Package-registry publication is a separate
-decision.
+Jalen authorized continued implementation and a measured, proof-led campaign
+on 2026-07-23. Public posts and relevant-user tagging enter scope only after
+the council approves the exact release candidate and campaign packet. The Buzz
+maintainer discussion remains evidence-gated on one independent maintainer
+reaction. Package-registry publication is a separate decision.

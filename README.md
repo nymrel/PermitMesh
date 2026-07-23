@@ -99,7 +99,7 @@ Run the complete reproducible demo:
 .\scripts\demo.ps1
 ```
 
-Run the 27-case adversarial conformance suite and save a receipt:
+Run the 33-case adversarial conformance suite and save a receipt:
 
 ```powershell
 permitmesh conformance examples\conformance-suite.json `
@@ -110,8 +110,8 @@ The suite covers subject and channel mismatch, unknown and malformed actions,
 root-anchored path and ref glob edges, traversal and non-canonical paths,
 duplicate JSON keys, exact decimal budgets, malformed approvals, stale claims
 and fences, exact high-risk operation binding, replayed operation nonces,
-validity boundaries, unknown fields, non-finite input, and required completion
-evidence.
+validity boundaries, unknown fields, non-finite input, required completion
+evidence, and trusted Buzz-context binding failures.
 
 ## How it fits
 
@@ -134,6 +134,7 @@ PermitMesh is the policy decision point. The runtime, relay, or tool proxy remai
 permitmesh validate <contract>
 permitmesh digest <contract>
 permitmesh authorize <contract> <request> [--evaluation-time RFC3339]
+permitmesh authorize-buzz <contract> <request> <context> [--evaluation-time RFC3339]
 permitmesh verify-completion <contract> <report> [--evaluation-time RFC3339]
 permitmesh to-event <contract> [--created-at UNIX_SECONDS]
 permitmesh conformance <suite> [--receipt PATH] [--enforcement-boundary TEXT]
@@ -183,6 +184,26 @@ python -m permitmesh to-event examples\contract.valid.json --created-at 17848000
 This emits an envelope containing a NIP-78-style kind `30078` template with a deterministic `d` tag and contract digest. The issuer `pubkey` is present while `id` and `sig` are deliberately blank. A Buzz/Nostr integration must compute the NIP-01 event ID, sign with the issuer's key, and validate that signature before treating it as authorization.
 
 The adapter is exploratory. An upstream design conversation should decide whether capability contracts belong in application data, a Buzz-specific kind, or a broader NIP.
+
+## Buzz context adapter
+
+```powershell
+python -m permitmesh authorize-buzz `
+  examples\contract.valid.json `
+  examples\request.allowed.json `
+  examples\buzz-context.valid.json `
+  --evaluation-time 2026-07-23T12:00:00Z
+```
+
+This second adapter consumes facts from an already-trusted Buzz integration:
+verified NIP-OA owner-agent provenance, current repository protection state,
+the canonical permit digest, and repository/ref/channel identity. PermitMesh
+validates and binds those facts to the contract and request, and rejects
+context older than five minutes.
+
+PermitMesh does **not** fetch Buzz events, verify Nostr signatures or NIP-OA,
+or inspect `buzz-protect` itself. The runtime supplying the context owns those
+checks. See [the Buzz interoperability profile](docs/BUZZ_INTEROP.md).
 
 ## Trust boundaries
 

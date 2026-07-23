@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/JalenBuildsHub/PermitMesh/main/schema/permitmesh-buzz-context.schema.json",
+  "title": "PermitMesh Trusted Buzz Context 0.1",
+  "description": "Facts supplied by a trusted Buzz integration. Schema validity is not signature or protection verification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "context_version",
+    "community",
+    "contract_digest",
+    "owner_pubkey",
+    "agent_pubkey",
+    "owner_attestation_event_id",
+    "repository_announcement_event_id",
+    "nip_oa_verified",
+    "repository",
+    "ref",
+    "channel",
+    "protection_checked",
+    "verified_at"
+  ],
+  "properties": {
+    "context_version": {"const": "0.1"},
+    "community": {
+      "type": "string",
+      "pattern": "^(?:https|wss)://[^/?#]+(?:/[^?#]*)?$"
+    },
+    "contract_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "owner_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "agent_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "owner_attestation_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repository_announcement_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nip_oa_verified": {"const": true},
+    "repository": {"type": "string", "minLength": 1},
+    "ref": {"type": "string", "minLength": 1},
+    "channel": {"type": "string", "minLength": 1},
+    "protection_checked": {"const": true},
+    "verified_at": {"type": "string", "format": "date-time"}
+  }
+}

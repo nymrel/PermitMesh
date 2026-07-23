@@ -222,6 +222,65 @@
       "consumed_nonces": ["permitmesh-demo-deploy-001"],
       "expected_outcome": "deny",
       "expected_violations_contain": ["already been consumed"]
+    },
+    {
+      "id": "allow-trusted-buzz-context",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "allow"
+    },
+    {
+      "id": "deny-unverified-buzz-owner-attestation",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "conformance/buzz-context.unverified.json",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["nip_oa_verified must be true"]
+    },
+    {
+      "id": "deny-buzz-owner-mismatch",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "conformance/buzz-context.owner-mismatch.json",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["owner_pubkey does not match"]
+    },
+    {
+      "id": "deny-unchecked-buzz-protection",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "conformance/buzz-context.protection-unchecked.json",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["protection_checked must be true"]
+    },
+    {
+      "id": "deny-buzz-ref-mismatch",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "conformance/buzz-context.ref-mismatch.json",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["ref does not match"]
+    },
+    {
+      "id": "deny-unknown-buzz-context-field",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "conformance/buzz-context.unknown-field.json",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["unknown field"]
     }
   ]
 }
