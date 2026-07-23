@@ -1,0 +1,20 @@
+{
+    "receipt_version":  "0.2",
+    "status":  "pass",
+    "source":  "clean local git clone",
+    "commit":  "bb1cc04536b1957b49b48936e8bb2eb1e448d853",
+    "github_repository":  null,
+    "github_run_id":  null,
+    "github_workflow_ref":  null,
+    "python":  "Python 3.13.5",
+    "runner_os":  null,
+    "elapsed_seconds":  14.105,
+    "threshold_seconds":  600,
+    "package_build":  "pass",
+    "wheel_install":  "no-index; no-deps",
+    "wheel_sha256":  "a8cf9bf0d35978db960ec68c97cafc9967a79d6cf23093e334b8a7bc2e4da8bb",
+    "conformance":  "41/41",
+    "conformance_suite_digest":  "3f67b5813c48691dc5b75bf9514a7039f0030d9dfc5ba4f13e847c06586ac755",
+    "buzz_authenticated_fixture":  "allow",
+    "enforcement_boundary":  "policy-decision-only; no tool execution"
+}
