@@ -11,7 +11,11 @@ from unittest.mock import patch
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from permitmesh.buzz import authorize_buzz, validate_buzz_context
+from permitmesh.buzz import (
+    authorize_buzz,
+    compute_buzz_context_mac,
+    validate_buzz_context,
+)
 from permitmesh.cli import main
 
 
@@ -167,6 +171,100 @@ class BuzzContextTests(unittest.TestCase):
                     any(fragment in item for item in decision.violations),
                     decision.violations,
                 )
+
+    def test_naive_trusted_time_explicitly_fails_closed(self) -> None:
+        decision = authorize_buzz(
+            self.contract,
+            self.request,
+            self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
+            now=datetime(2026, 7, 23, 12),
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "buzz freshness requires a timezone-aware trusted evaluator time",
+            decision.violations,
+        )
+
+    def test_repository_ref_and_channel_aliases_fail_closed(self) -> None:
+        aliases = {
+            "repository": "PermitMesh",
+            "ref": "feature//agent-contract",
+            "channel": "permitmesh\\feature-agent-contract",
+        }
+        for field, alias in aliases.items():
+            with self.subTest(field=field):
+                request = deepcopy(self.request)
+                context = deepcopy(self.context)
+                request[field] = alias
+                context[field] = alias
+                context["context_mac"] = compute_buzz_context_mac(
+                    context, self.context_key
+                )
+                decision = authorize_buzz(
+                    self.contract,
+                    request,
+                    context,
+                    context_auth_key=self.context_key,
+                    expected_community_uri=self.community_uri,
+                    expected_repository_announcement_event_id=(
+                        self.repository_event_id
+                    ),
+                    now=self.now,
+                )
+                self.assertFalse(decision.allowed)
+
+    def test_buzz_context_cannot_bypass_core_deny_rules(self) -> None:
+        request = deepcopy(self.request)
+        request["path"] = ".env"
+        decision = authorize_buzz(
+            self.contract,
+            request,
+            self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
+            now=self.now,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertTrue(
+            any("matches a deny rule" in item for item in decision.violations)
+        )
+
+    def test_buzz_composition_preserves_exact_operation_binding(self) -> None:
+        request = load_example("conformance/request.deploy-bound.json")
+        allowed = authorize_buzz(
+            self.contract,
+            request,
+            self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
+            now=self.now,
+            consumed_nonces=frozenset(),
+        )
+        self.assertTrue(allowed.allowed)
+
+        request["operation"]["arguments"]["environment"] = "production"
+        denied = authorize_buzz(
+            self.contract,
+            request,
+            self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
+            now=self.now,
+            consumed_nonces=frozenset(),
+        )
+        self.assertFalse(denied.allowed)
+        self.assertTrue(
+            any(
+                "do not match an approved constraint" in item
+                for item in denied.violations
+            )
+        )
 
     def test_schema_and_runtime_accept_the_same_valid_fixture(self) -> None:
         validator = self.context_validator()

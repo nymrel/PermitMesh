@@ -829,7 +829,7 @@
     }
   ],
   "enforcement_boundary": "policy-decision-only; no tool execution",
-  "generated_at": "2026-07-23T19:54:13.600332Z",
+  "generated_at": "2026-07-23T20:14:25.899886Z",
   "implementation": {
     "name": "permitmesh",
     "version": "0.2.0"

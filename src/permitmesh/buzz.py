@@ -155,6 +155,12 @@ def authorize_buzz(
     checks = (*base.checks, "buzz_context")
     context_violations = validate_buzz_context(context)
     violations.extend(context_violations)
+    if now is not None and (
+        not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None
+    ):
+        violations.append(
+            "buzz freshness requires a timezone-aware trusted evaluator time"
+        )
 
     if isinstance(context, dict):
         try:
@@ -223,13 +229,13 @@ def authorize_buzz(
                 pass
             else:
                 if verified_time.tzinfo is not None:
-                    effective_now = (
-                        datetime.now(timezone.utc)
-                        if now is None
-                        else now.astimezone(timezone.utc)
-                        if now.tzinfo is not None and now.utcoffset() is not None
-                        else None
-                    )
+                    effective_now = datetime.now(timezone.utc) if now is None else None
+                    if (
+                        isinstance(now, datetime)
+                        and now.tzinfo is not None
+                        and now.utcoffset() is not None
+                    ):
+                        effective_now = now.astimezone(timezone.utc)
                     if effective_now is not None:
                         verified_time = verified_time.astimezone(timezone.utc)
                         if verified_time > effective_now:
