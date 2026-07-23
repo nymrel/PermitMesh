@@ -3,7 +3,7 @@
   "candidate": "Buzz interoperability adoption slice",
   "status": "READY_FOR_COUNCIL_REVIEW",
   "branch": "feature/buzz-interop",
-  "implementation_commit": "12bdc359abc7ba7f09e2e16ac76b76d691e2fc38",
+  "implementation_commit": "7272fa1683cb584ded360eee32e6bc0deecd11a1",
   "commit_signature": {
     "status": "good",
     "principal": "contact@jalenbuilds.com",
@@ -11,14 +11,14 @@
   },
   "validation": {
     "unit_tests": {
-      "passed": 92,
+      "passed": 93,
       "failed": 0
     },
     "conformance": {
-      "passed": 36,
+      "passed": 41,
       "failed": 0,
       "receipt": "validation/conformance-buzz-local.json",
-      "receipt_sha256": "d0b7542a7f4a36fa275b055310184e295a46d237e6b7dae42d096bbdba0939c3"
+      "receipt_sha256": "a81ca5b811aa156d3bcf3295532aa04865090ec122350c2f2f1c3598ecdf2524"
     },
     "ruff_format": "passed",
     "ruff_check": "passed",
@@ -28,7 +28,7 @@
     "package_build": "passed",
     "clean_wheel_smoke": {
       "status": "passed",
-      "wheel_sha256": "e8dbae7e4d7546e74c2d61fee682b38a725f88521ffb7c5b64670e8bb55f618b"
+      "wheel_sha256": "aa35172e08179666f2c297fae3150dedfa804b781599d8d56e0c7013857c1a1a"
     }
   },
   "security_boundary": {
@@ -38,7 +38,8 @@
       "verify NIP-OA owner-agent provenance",
       "resolve the repository announcement",
       "check current buzz-protect state",
-      "supply a context no more than five minutes old"
+      "supply a context no more than five minutes old",
+      "supply an explicit timezone-aware trusted evaluator time"
     ],
     "permitmesh_checks": [
       "strict context schema with unknown-field denial",
@@ -85,6 +86,16 @@
       "repository, ref, and channel aliases fail closed",
       "authenticated Buzz context cannot bypass core deny rules",
       "Buzz composition preserves exact high-risk operation binding"
+    ]
+  },
+  "partial_rc4_remediation": {
+    "source_run": "reports/councils/permitmesh-buzz-adoption-rc4-20260723",
+    "source_status": "HOLD_INVALID_EVIDENCE",
+    "transport_failure": "Antigravity prompt exceeded the direct transport limit; partial provider outputs were not counted as a council decision",
+    "closed_findings": [
+      "omitted trusted evaluator time now fails closed",
+      "authorize-buzz CLI requires an explicit timezone-aware evaluator time",
+      "portable conformance now includes the five council regression cases"
     ]
   },
   "repository_governance": {

@@ -1,11 +1,11 @@
 # Buzz adapter council proof
 
-Implementation commit: `12bdc359abc7ba7f09e2e16ac76b76d691e2fc38`
+Implementation commit: `7272fa1683cb584ded360eee32e6bc0deecd11a1`
 
 Validated locally on 2026-07-23:
 
-- 92/92 unit tests passed.
-- 36/36 portable conformance cases passed.
+- 93/93 unit tests passed.
+- 41/41 portable conformance cases passed.
 - Ruff format/check, mypy, Bandit, and compileall passed.
 - Source distribution and wheel built successfully.
 - A new virtual environment installed the wheel without an index or
@@ -21,5 +21,9 @@ naive trusted evaluator time fails closed, repository/ref/channel aliases do
 not expand scope, Buzz context cannot bypass core deny rules, and composition
 preserves exact high-risk operation binding.
 
+The five portable council-regression cases cover omitted and naive evaluator
+time, noncanonical work aliases, a core deny-path bypass attempt, and
+high-risk operation substitution.
+
 The full machine receipt is `validation/conformance-buzz-local.json`, SHA-256
-`d0b7542a7f4a36fa275b055310184e295a46d237e6b7dae42d096bbdba0939c3`.
+`a81ca5b811aa156d3bcf3295532aa04865090ec122350c2f2f1c3598ecdf2524`.
