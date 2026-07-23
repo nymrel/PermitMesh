@@ -1,0 +1,57 @@
+{
+  "schema_version": "permitmesh_release_candidate_receipt.v1",
+  "candidate": "Buzz interoperability adoption slice",
+  "status": "READY_FOR_COUNCIL_REVIEW",
+  "branch": "feature/buzz-interop",
+  "implementation_commit": "c629d74c0f9c92bdddef79ed3d3fd6dceee7b518",
+  "commit_signature": {
+    "status": "good",
+    "principal": "contact@jalenbuilds.com",
+    "key": "SHA256:z01OUOJhHHUQq2e5vHkFpFxxp5GOnfMZ6XZ+K7EtUj4"
+  },
+  "validation": {
+    "unit_tests": {
+      "passed": 86,
+      "failed": 0
+    },
+    "conformance": {
+      "passed": 33,
+      "failed": 0,
+      "receipt": "validation/conformance-buzz-local.json",
+      "receipt_sha256": "9da53421408953c8a91a3906fbd94b28f9f3acddbedb734fde52eec71d514dda"
+    },
+    "ruff_format": "passed",
+    "ruff_check": "passed",
+    "mypy": "passed",
+    "bandit": "passed",
+    "compileall": "passed",
+    "package_build": "passed",
+    "clean_wheel_smoke": "not_run_cleanup_guard_blocked_before_execution"
+  },
+  "security_boundary": {
+    "permitmesh_role": "policy decision point",
+    "trusted_buzz_integration": [
+      "verify Nostr event ids and signatures",
+      "verify NIP-OA owner-agent provenance",
+      "resolve the repository announcement",
+      "check current buzz-protect state",
+      "supply a context no more than five minutes old"
+    ],
+    "permitmesh_checks": [
+      "strict context schema with unknown-field denial",
+      "canonical contract digest binding",
+      "owner and agent binding",
+      "repository, ref, and channel binding",
+      "freshness and future-time denial",
+      "core PermitMesh action policy"
+    ],
+    "enforcement_point": "atomically consume a high-risk operation nonce and execute the exact bound operation"
+  },
+  "release_gate": {
+    "package_publication": "held",
+    "public_posts": "held",
+    "user_tagging": "held",
+    "direct_outreach": "held",
+    "buzz_maintainer_discussion": "held_pending_council_and_one_independent_reaction"
+  }
+}
