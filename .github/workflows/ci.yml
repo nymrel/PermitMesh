@@ -41,3 +41,31 @@ jobs:
           code=$?
           set -e
           test "$code" -eq 3
+
+  clean-room:
+    name: clean-room (${{ matrix.os }}, py3.13)
+    needs: test
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build
+      - name: Build and verify clean wheel
+        shell: pwsh
+        run: >
+          ./scripts/clean-room.ps1
+          -Python python
+          -Receipt validation/clean-room-${{ runner.os }}-py3.13.json
+      - name: Upload clean-room receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: clean-room-${{ runner.os }}-py3.13
+          path: validation/clean-room-${{ runner.os }}-py3.13.json
+          if-no-files-found: error
