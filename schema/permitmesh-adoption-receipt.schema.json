@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/JalenBuildsHub/PermitMesh/main/schema/permitmesh-adoption-receipt.schema.json",
+  "title": "PermitMesh External Adoption Receipt 0.1",
+  "description": "A redaction-safe receipt for an independently confirmed PermitMesh authorization run.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "status",
+    "generated_at",
+    "project",
+    "external_team",
+    "workflow",
+    "decisions",
+    "artifacts",
+    "attestation",
+    "hygiene",
+    "eligibility"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "permitmesh_adoption_receipt.v1"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^pmar-[a-z0-9][a-z0-9-]{5,63}$"
+    },
+    "status": {
+      "enum": ["draft", "verified"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_url", "commit_sha", "permitmesh_version"],
+      "properties": {
+        "repository_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://github\\.com/"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "permitmesh_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "external_team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_identifier",
+        "identity_url",
+        "independent_from_jalen_studio"
+      ],
+      "properties": {
+        "public_identifier": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "identity_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "independent_from_jalen_studio": {
+          "const": true
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "enforcement_boundary", "environment"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500
+        },
+        "enforcement_boundary": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_expected",
+        "allowed_observed",
+        "denied_expected",
+        "denied_observed",
+        "known_false_allows",
+        "known_false_denies"
+      ],
+      "properties": {
+        "allowed_expected": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "allowed_observed": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "denied_expected": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "denied_observed": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "known_false_allows": {
+          "const": 0
+        },
+        "known_false_denies": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "url", "sha256"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "contract",
+              "request",
+              "decision",
+              "conformance",
+              "log"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmed_by",
+        "confirmation_url",
+        "confirmed_at",
+        "matched_intended_scope"
+      ],
+      "properties": {
+        "confirmed_by": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "confirmation_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "confirmed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "matched_intended_scope": {
+          "const": true
+        }
+      }
+    },
+    "hygiene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["secret_scan", "redaction_review"],
+      "properties": {
+        "secret_scan": {
+          "const": "passed"
+        },
+        "redaction_review": {
+          "const": "passed"
+        }
+      }
+    },
+    "eligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["counts_toward_north_star", "reason"],
+      "properties": {
+        "counts_toward_north_star": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "eligibility": {
+            "properties": {
+              "counts_toward_north_star": {
+                "const": true
+              }
+            },
+            "required": ["counts_toward_north_star"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "verified"
+          }
+        }
+      }
+    }
+  ]
+}

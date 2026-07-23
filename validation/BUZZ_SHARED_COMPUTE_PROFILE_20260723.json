@@ -2,6 +2,13 @@
   "schema_version": "permitmesh_buzz_shared_compute_profile_receipt.v1",
   "status": "local_validation_passed",
   "independence": "PermitMesh is an independent, optional policy profile and is not endorsed by Block, Buzz, or MeshLLM.",
+  "implementation_commit": {
+    "sha": "a442b8a72fe936b0b8cab05d5c7380e2f94ba37e",
+    "local_signature_verified": true,
+    "signer": "contact@jalenbuilds.com",
+    "key_fingerprint": "SHA256:z01OUOJhHHUQq2e5vHkFpFxxp5GOnfMZ6XZ+K7EtUj4",
+    "public_github_verification": "held_pending_signing_key_registration"
+  },
   "official_source": {
     "repository": "https://github.com/block/buzz",
     "main_commit": "5afa16157a63c71f2cd8a80aa7276de28ce1c54c",

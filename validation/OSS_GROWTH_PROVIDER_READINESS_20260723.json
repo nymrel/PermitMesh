@@ -1,0 +1,121 @@
+{
+  "schema_version": "permitmesh_oss_growth_provider_readiness.v1",
+  "generated_at": "2026-07-23T22:54:42Z",
+  "status": "validated_internal_packet_public_actions_held",
+  "independence": "PermitMesh is independent from and complementary to Buzz. It is not a Block, Buzz, or MeshLLM project and claims no endorsement.",
+  "global_gate": {
+    "github_public_signing_verification": "blocked_pending_key_registration",
+    "publication_council": "incomplete",
+    "applications": "held",
+    "package_publication": "held",
+    "posts_and_tags": "held",
+    "direct_outreach": "held"
+  },
+  "public_evidence_target": {
+    "verified_external_authorization_runs": 5,
+    "minimum_independent_teams": 2,
+    "maximum_known_false_allows": 0,
+    "required_decisions_per_run": {
+      "intentionally_allowed": 1,
+      "intentionally_denied": 1
+    },
+    "required_receipt_schema": "permitmesh_adoption_receipt.v1",
+    "required_receipt_controls": [
+      "external-team independence",
+      "public or redacted-public identity evidence",
+      "artifact SHA-256 digests",
+      "maintainer confirmation",
+      "secret scan passed",
+      "redaction review passed"
+    ]
+  },
+  "current_public_snapshot": {
+    "as_of": "2026-07-23",
+    "repository": "https://github.com/JalenBuildsHub/PermitMesh",
+    "repository_created_at": "2026-07-23T08:53:50Z",
+    "public_main_sha": "2878bcdfa38000e75f806c074ddbaddee74b70d2",
+    "license_spdx": "Apache-2.0",
+    "stars": 0,
+    "forks": 0,
+    "subscribers": 0,
+    "human_contributors": 1,
+    "external_merged_contributors": 0,
+    "verified_external_authorization_runs": 0,
+    "independent_external_teams": 0,
+    "known_false_allows": 0,
+    "github_prereleases": 2,
+    "pypi_project_lookup_status": 404,
+    "pypi_package_published": false,
+    "openssf_criticality_score": null,
+    "openssf_criticality_note": "No current score was independently verified."
+  },
+  "application_readiness": [
+    {
+      "program": "OpenAI Codex for Open Source",
+      "status": "not_ready",
+      "reason": "Active maintenance is evidenced, but meaningful usage, broad adoption, and ecosystem importance are not.",
+      "official_source": "https://openai.com/form/codex-for-oss/",
+      "draft_packet": "docs/provider-readiness/OPENAI_CODEX_OSS_DRAFT.md"
+    },
+    {
+      "program": "OpenAI Researcher Access",
+      "status": "route_mismatch_not_ready",
+      "reason": "The current lane is OSS product validation, not a defined research study with an accountable research protocol.",
+      "official_source": "https://openai.com/form/researcher-access-program/",
+      "draft_packet": "docs/provider-readiness/OPENAI_RESEARCHER_ACCESS_DRAFT.md"
+    },
+    {
+      "program": "Anthropic Claude for Open Source",
+      "status": "verified_thresholds_not_met",
+      "reason": "No published dependency, download, contributor, external-PR, recognized-maintainer, or OpenSSF criticality threshold is currently evidenced.",
+      "official_source": "https://claude.com/contact-sales/claude-for-oss",
+      "draft_packet": "docs/provider-readiness/ANTHROPIC_CLAUDE_OSS_DRAFT.md"
+    },
+    {
+      "program": "AWS Cloud Credits for Open Source",
+      "status": "not_currently_ready",
+      "reason": "The OSI-license condition is met, but multi-entity community engagement, AWS relevance, and a costed workload are absent.",
+      "official_source": "https://aws.amazon.com/blogs/opensource/aws-cloud-credits-for-open-source-projects-affirming-our-commitment/",
+      "draft_packet": "docs/provider-readiness/AWS_OSS_CREDITS_DRAFT.md"
+    },
+    {
+      "program": "AWS Activate / Google for Startups Cloud / Microsoft for Startups",
+      "status": "potential_routes_company_and_account_facts_missing",
+      "reason": "Legal-entity, funding, prior-credit, billing-account, architecture, and cost-forecast facts were not verified in this repository lane.",
+      "official_sources": [
+        "https://aws.amazon.com/startups/credits/",
+        "https://cloud.google.com/startup/faq",
+        "https://www.microsoft.com/en-us/startups"
+      ],
+      "draft_packet": "docs/provider-readiness/STARTUP_CREDIT_ROUTES_DRAFT.md"
+    }
+  ],
+  "artifact_digests": {
+    "schema/permitmesh-adoption-receipt.schema.json": "61a1745f64ee80b905a989b34131e60b38b21cff2b5f3fd73ce8cfe2b9e5e049",
+    "examples/adoption-receipt.example.json": "00cf1573867d9865acdff9b6101bba8cbbe861ca5e394f1ce6a8750a2317ae7d",
+    "docs/OSS_GROWTH_AND_PROVIDER_READINESS.md": "fc494d79015966e91fd3f47f285502ac921670c7a3880f98c7dbaf164162316d"
+  },
+  "validation": {
+    "adoption_receipt_schema_tests": {
+      "passed": 6,
+      "failed": 0
+    },
+    "repository_unit_tests": {
+      "passed": 112,
+      "failed": 0
+    },
+    "portable_conformance": {
+      "passed": 45,
+      "failed": 0
+    },
+    "ruff": "passed",
+    "mypy_src": "passed",
+    "json_parse": "passed",
+    "git_diff_check": "passed"
+  },
+  "decision": {
+    "recommended": "evidence_first_external_pilot_after_global_gates",
+    "weight_percent": 70,
+    "next_exact_move": "Register the configured GitHub SSH signing key through the approved account surface, verify the public signature on the exact candidate commit, and rerun the full-context publication council before any external pilot or provider submission."
+  }
+}

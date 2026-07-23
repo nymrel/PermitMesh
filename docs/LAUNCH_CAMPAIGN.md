@@ -78,7 +78,7 @@ No model decides. No vague “be careful” prompt.
 It is a PDP, not a sandbox or enforcement proxy, and it is not affiliated with
 Block, Buzz, or a standards body.
 
-The repo includes a candid prior-art matrix and 41-case conformance suite.
+The repo includes a candid prior-art matrix and 45-case conformance suite.
 We want maintainers to break the profile with real workflows.
 
 ## v0.2.0 update draft
@@ -90,7 +90,7 @@ nonce binding for high-risk operations.
 The evaluator checks nonce state but does not consume it. A real enforcement
 point must atomically consume the nonce and execute the exact operation.
 
-93 tests; 41/41 conformance. Still a policy-decision profile, not enforcement.
+112 tests; 45/45 conformance. Still a policy-decision profile, not enforcement.
 
 ## Upstream discussion draft
 

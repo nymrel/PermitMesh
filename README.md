@@ -99,7 +99,7 @@ Run the complete reproducible demo:
 .\scripts\demo.ps1
 ```
 
-Run the 41-case adversarial conformance suite and save a receipt:
+Run the 45-case adversarial conformance suite and save a receipt:
 
 ```powershell
 permitmesh conformance examples\conformance-suite.json `
@@ -114,7 +114,8 @@ validity boundaries, unknown fields, non-finite input, required completion
 evidence, and trusted Buzz-context binding failures.
 The Buzz cases include omitted and timezone-naive evaluator time, noncanonical
 work aliases, core deny-path composition, and high-risk operation
-substitution.
+substitution. Shared-compute cases cover a trusted route plus unapproved
+serving members, unapproved model IDs, and token-budget overruns.
 
 ## How it fits
 

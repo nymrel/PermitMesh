@@ -48,13 +48,17 @@ Help open-source maintainers safely delegate real work to agents by making autho
 - Measurement window: rolling 30 days
 - Qualifying event: external maintainer supplies a reproducible contract/request pair or public receipt and confirms the decisions matched intended scope.
 - Exclusions: internal demos, synthetic CI-only repeats, stars, page views, duplicate runs by the same team on unchanged policy.
-- Data source: planned public conformance receipt directory or issue template.
+- Data source: schema-valid `permitmesh_adoption_receipt.v1` artifacts using
+  `schema/permitmesh-adoption-receipt.schema.json`.
 - Current baseline: 0
 - Baseline as of: 2026-07-23
 - Target: 5 runs across at least 2 external teams
 - Target by: 2026-08-22
 - Cadence: weekly
-- Guardrails: zero known false allows; no secrets in receipts; no claim of Buzz endorsement; median setup under 10 minutes.
+- Guardrails: zero known false allows; no secrets in receipts; no claim of Buzz
+  endorsement; median setup under 10 minutes; every qualifying run is
+  independently attributable and contains at least one allowed and one denied
+  decision.
 - How this metric can be gamed: friendly users can repeat trivial fixtures or count policy-only examples with no enforcement relevance.
 - Worked example: a maintainer runs one allowed source edit and one denied production deploy through their agent proxy, publishes redacted receipts, and confirms both decisions matched intent; this counts as one run.
 
@@ -65,6 +69,24 @@ Help open-source maintainers safely delegate real work to agents by making autho
 | External maintainer interviews completed | Tests whether the problem is real before integration work | Three maintainers have run the CLI |
 | Independent installs from clean environments | Detects packaging and documentation friction | Public conformance receipts exist |
 | Upstream design responses | Shows whether the protocol question is legible and relevant | A stable integration venue is chosen |
+
+### Public evidence and provider gate
+
+Provider support is an outcome of credible maintenance and adoption, not a
+substitute for it. The project is not application-ready until the public
+evidence target is met:
+
+- 5 verified external authorization runs across at least 2 independent teams;
+- zero known false allows;
+- schema-valid, redaction-safe adoption receipts with external maintainer
+  confirmation;
+- separately reported contributor evidence, excluding bots and Jalen Studio;
+- no inflated adoption claims from stars, prereleases, internal demos, or
+  synthetic CI.
+
+The current provider matrix and draft-only packets are in
+`docs/OSS_GROWTH_AND_PROVIDER_READINESS.md`. They remain held behind the
+existing signing and publication-council gates.
 
 ## Value loop
 
@@ -178,9 +200,11 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 
 - Completion type: campaign
 - Owner or claim expectation: one PermitMesh writer under the live release claim.
-- Exact scope: validate the Buzz compatibility adapter, close the council
-  gates, then publish the proof and recruit three maintainers. Gate any direct
-  Buzz maintainer discussion on one independent reaction.
+- Exact scope: validate the Buzz compatibility and shared-compute profiles,
+  close the signing and council gates, then run a bounded external pilot toward
+  5 verified authorization runs across at least 2 teams. Gate any direct Buzz
+  maintainer discussion on one independent reaction. Provider applications
+  remain draft-only until their separate evidence thresholds pass.
 - Non-goals: production enforcement, public security claims, paid hosting, Buzz fork.
 - Validation floor: clean-install CLI demo, all tests passing, schema validation, no false allow in adversarial fixtures, explicit unsigned-event behavior.
 - Stop conditions: upstream asks us to stop; name conflict creates material confusion; three maintainers find no portable-policy need; any known false allow remains unresolved.
@@ -191,7 +215,7 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 | --- | --- | --- | --- |
 | Days 0–2 | After council approval, publish a crisp release and 30-second allowed/denied Buzz-context demo | public clone and reproducible CI | clean checkout fails |
 | Days 2–5 | Post one visual explanation and invite relevant agent-runtime maintainers to break the policy | runnable fixtures and issue template | messaging implies endorsement |
-| Days 3–7 | Onboard three maintainers manually | redacted decision receipts | setup exceeds 10 minutes repeatedly |
+| Days 3–7 | Onboard the first external team, then a second independent team | schema-valid redacted adoption receipts | any known false allow |
 | Days 7–10 | Only after one independent reaction, open one design-first Buzz discussion linking the gap, not pitching a product | maintainer response or acknowledged issue/discussion | contribution guidance says another venue |
 | Days 10–14 | Publish findings, including what failed, and choose adapter/no-adapter | evidence-backed phase ruling | no repeated integration boundary |
 
@@ -200,3 +224,4 @@ Narrow, machine-verifiable authority is a default primitive for human-agent inst
 | Date | Change | Owner |
 | --- | --- | --- |
 | 2026-07-23 | Initial hypothesis and local proof campaign | Codex for Jalen Studio |
+| 2026-07-23 | Added shared-compute proof, external evidence targets, adoption receipt contract, and provider-readiness gates | Codex for Jalen Studio |

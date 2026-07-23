@@ -1,0 +1,55 @@
+{
+  "schema_version": "permitmesh_adoption_receipt.v1",
+  "receipt_id": "pmar-template-only",
+  "status": "draft",
+  "generated_at": "2026-07-23T23:00:00Z",
+  "project": {
+    "repository_url": "https://github.com/JalenBuildsHub/PermitMesh",
+    "commit_sha": "0000000000000000000000000000000000000000",
+    "permitmesh_version": "replace-with-tested-version"
+  },
+  "external_team": {
+    "public_identifier": "replace-with-external-team",
+    "identity_url": "https://example.invalid/external-team",
+    "independent_from_jalen_studio": true
+  },
+  "workflow": {
+    "description": "Replace with the real software-change authorization workflow.",
+    "enforcement_boundary": "replace-with-real-enforcement-boundary",
+    "environment": "replace-with-reproducible-environment"
+  },
+  "decisions": {
+    "allowed_expected": 1,
+    "allowed_observed": 1,
+    "denied_expected": 1,
+    "denied_observed": 1,
+    "known_false_allows": 0,
+    "known_false_denies": 0
+  },
+  "artifacts": [
+    {
+      "kind": "contract",
+      "url": "https://example.invalid/redacted-contract.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "kind": "decision",
+      "url": "https://example.invalid/redacted-decision.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "attestation": {
+    "confirmed_by": "replace-with-maintainer-handle",
+    "confirmation_url": "https://example.invalid/maintainer-confirmation",
+    "confirmed_at": "2026-07-23T23:00:00Z",
+    "matched_intended_scope": true
+  },
+  "hygiene": {
+    "secret_scan": "passed",
+    "redaction_review": "passed"
+  },
+  "eligibility": {
+    "counts_toward_north_star": false,
+    "reason": "Template only; replace every placeholder and complete independent verification."
+  }
+}
