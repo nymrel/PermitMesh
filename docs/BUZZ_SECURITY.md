@@ -15,7 +15,8 @@ PermitMesh verifies that MAC and independently binds:
 - the canonical permit digest;
 - owner and agent public keys;
 - repository, ref, and channel; and
-- a verification time no more than five minutes old.
+- a verification time no more than five minutes old, evaluated against an
+  explicitly timezone-aware trusted clock.
 
 The enforcement point must still authenticate the caller, provide trusted
 time and usage state, enforce current fencing, and atomically consume a

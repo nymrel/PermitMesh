@@ -3,7 +3,7 @@
   "candidate": "Buzz interoperability adoption slice",
   "status": "READY_FOR_COUNCIL_REVIEW",
   "branch": "feature/buzz-interop",
-  "implementation_commit": "3ec5093d447d4260960687618a36e159a7b83a62",
+  "implementation_commit": "12bdc359abc7ba7f09e2e16ac76b76d691e2fc38",
   "commit_signature": {
     "status": "good",
     "principal": "contact@jalenbuilds.com",
@@ -11,14 +11,14 @@
   },
   "validation": {
     "unit_tests": {
-      "passed": 88,
+      "passed": 92,
       "failed": 0
     },
     "conformance": {
       "passed": 36,
       "failed": 0,
       "receipt": "validation/conformance-buzz-local.json",
-      "receipt_sha256": "dfca6f9ea962e5286a89c9ad438f1b242e5bb66c7045dded7b93eae7468ba16f"
+      "receipt_sha256": "d0b7542a7f4a36fa275b055310184e295a46d237e6b7dae42d096bbdba0939c3"
     },
     "ruff_format": "passed",
     "ruff_check": "passed",
@@ -28,7 +28,7 @@
     "package_build": "passed",
     "clean_wheel_smoke": {
       "status": "passed",
-      "wheel_sha256": "8bd706d5103aa06cd3442f1de743e046700470d3709b8c5dfaa79101407d913a"
+      "wheel_sha256": "e8dbae7e4d7546e74c2d61fee682b38a725f88521ffb7c5b64670e8bb55f618b"
     }
   },
   "security_boundary": {
@@ -66,9 +66,25 @@
       "campaign sequence now places Buzz discussion after independent reaction"
     ],
     "remaining_external_conditions": [
-      "four-provider two-round council evidence",
+      "temporary three-provider two-round council evidence under the operator-approved Claude deferral",
       "GitHub signing-key registration before required-signature protection",
       "one independent reproduction before direct Buzz maintainer discussion"
+    ]
+  },
+  "three_provider_council_remediation": {
+    "source_run": "reports/councils/permitmesh-buzz-adoption-rc3-20260723",
+    "source_status": "HOLD",
+    "provider_scope": [
+      "codex",
+      "antigravity",
+      "cursor"
+    ],
+    "claude_status": "operator_deferred_until_2026-07-24",
+    "closed_findings": [
+      "invalid or timezone-naive trusted evaluator time now produces an explicit Buzz violation",
+      "repository, ref, and channel aliases fail closed",
+      "authenticated Buzz context cannot bypass core deny rules",
+      "Buzz composition preserves exact high-risk operation binding"
     ]
   },
   "repository_governance": {
