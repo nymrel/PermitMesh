@@ -1,0 +1,15 @@
+{
+  "subject_id": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+  "action": "edit",
+  "channel": "permitmesh\\feature-agent-contract",
+  "repository": "PermitMesh",
+  "ref": "feature//agent-contract",
+  "path": "src/permitmesh/policy.py",
+  "files_changed": 4,
+  "commands_used": 12,
+  "cost_usd": 1.75,
+  "claim_id": "claim-permitmesh-demo",
+  "fencing_generation": 3,
+  "approvals": [],
+  "at": "2026-07-23T12:00:00Z"
+}

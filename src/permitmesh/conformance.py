@@ -131,6 +131,16 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
             expected_repository_event_id = case.get("buzz_expected_repository_event_id")
             if not isinstance(expected_repository_event_id, str):
                 raise ValueError("buzz_expected_repository_event_id must be a string")
+            buzz_evaluator_time = case.get("buzz_evaluator_time", "trusted")
+            if buzz_evaluator_time not in {"trusted", "omitted", "naive"}:
+                raise ValueError(
+                    "buzz_evaluator_time must be trusted, omitted, or naive"
+                )
+            buzz_now: datetime | None = now.astimezone(timezone.utc)
+            if buzz_evaluator_time == "omitted":
+                buzz_now = None
+            elif buzz_evaluator_time == "naive":
+                buzz_now = now.replace(tzinfo=None)
             decision = authorize_buzz(
                 contract,
                 request,
@@ -140,7 +150,7 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
                 expected_repository_announcement_event_id=(
                     expected_repository_event_id
                 ),
-                now=now.astimezone(timezone.utc),
+                now=buzz_now,
                 consumed_nonces=(
                     frozenset(consumed_nonces) if consumed_nonces is not None else None
                 ),

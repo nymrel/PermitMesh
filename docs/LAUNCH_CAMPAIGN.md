@@ -7,7 +7,7 @@ repository-governance review, and release proof before publication
 
 - **Category:** software-change authorization profile and conformance lab
 - **One line:** PermitMesh makes repo, path, budget, approval, claim-fence, and required-proof constraints portable across agent runtimes.
-- **Proof:** a dependency-free evaluator, 92 unit tests, 36 adversarial
+- **Proof:** a dependency-free evaluator, 93 unit tests, 41 adversarial
   fixtures, and a machine-readable conformance receipt.
 - **Ask:** run it against a real workflow, state what actually enforced the decision, and report false allows or false denies.
 
@@ -78,7 +78,7 @@ No model decides. No vague “be careful” prompt.
 It is a PDP, not a sandbox or enforcement proxy, and it is not affiliated with
 Block, Buzz, or a standards body.
 
-The repo includes a candid prior-art matrix and 36-case conformance suite.
+The repo includes a candid prior-art matrix and 41-case conformance suite.
 We want maintainers to break the profile with real workflows.
 
 ## v0.2.0 update draft
@@ -90,7 +90,7 @@ nonce binding for high-risk operations.
 The evaluator checks nonce state but does not consume it. A real enforcement
 point must atomically consume the nonce and execute the exact operation.
 
-92 tests; 36/36 conformance. Still a policy-decision profile, not enforcement.
+93 tests; 41/41 conformance. Still a policy-decision profile, not enforcement.
 
 ## Upstream discussion draft
 

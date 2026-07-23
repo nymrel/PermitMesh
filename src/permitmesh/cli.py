@@ -87,7 +87,8 @@ def build_parser() -> argparse.ArgumentParser:
     buzz_parser.add_argument(
         "--evaluation-time",
         type=_evaluation_time,
-        help="Trusted evaluator time override for deterministic tests and replay.",
+        required=True,
+        help="Timezone-aware trusted evaluator time.",
     )
 
     completion_parser = subparsers.add_parser(

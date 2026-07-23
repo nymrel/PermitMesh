@@ -173,8 +173,9 @@ The key must not be exposed to the agent.
 The integration, not PermitMesh, must verify Nostr event integrity and
 signatures, the NIP-OA owner attestation, the repository announcement, and
 current `buzz-protect` state. The context must be verified no more than five
-minutes before evaluation and must not be future-dated. Unknown or missing
-fields fail closed.
+minutes before evaluation and must not be future-dated. The trusted adapter
+must supply an explicit timezone-aware evaluator time; omission fails closed.
+Unknown or missing fields fail closed.
 
 See `schema/permitmesh-buzz-context.schema.json` and
 `docs/BUZZ_INTEROP.md`.

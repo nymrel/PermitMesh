@@ -338,6 +338,74 @@
       "evaluation_time": "2026-07-23T12:00:00Z",
       "expected_outcome": "deny",
       "expected_violations_contain": ["configured repository"]
+    },
+    {
+      "id": "deny-buzz-missing-trusted-evaluator-time",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "buzz_evaluator_time": "omitted",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["timezone-aware trusted evaluator time"]
+    },
+    {
+      "id": "deny-buzz-naive-trusted-evaluator-time",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "request.allowed.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "buzz_evaluator_time": "naive",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["timezone-aware trusted evaluator time"]
+    },
+    {
+      "id": "deny-buzz-noncanonical-work-aliases",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "conformance/request.buzz-aliases.json",
+      "buzz_context": "conformance/buzz-context.aliases.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["outside scope"]
+    },
+    {
+      "id": "deny-buzz-core-deny-path-bypass",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "conformance/request.buzz-deny-path.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["matches a deny rule"]
+    },
+    {
+      "id": "deny-buzz-high-risk-operation-substitution",
+      "operation": "authorize_buzz",
+      "contract": "contract.valid.json",
+      "request": "conformance/request.deploy-operation-mismatch.json",
+      "buzz_context": "buzz-context.valid.json",
+      "buzz_context_auth_key": "permitmesh-public-conformance-key-not-secret",
+      "buzz_expected_community_uri": "wss://relay.example.com/permitmesh",
+      "buzz_expected_repository_event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evaluation_time": "2026-07-23T12:00:00Z",
+      "consumed_nonces": [],
+      "expected_outcome": "deny",
+      "expected_violations_contain": ["do not match an approved constraint"]
     }
   ]
 }

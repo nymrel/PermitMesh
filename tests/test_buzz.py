@@ -188,6 +188,21 @@ class BuzzContextTests(unittest.TestCase):
             decision.violations,
         )
 
+    def test_missing_trusted_time_explicitly_fails_closed(self) -> None:
+        decision = authorize_buzz(
+            self.contract,
+            self.request,
+            self.context,
+            context_auth_key=self.context_key,
+            expected_community_uri=self.community_uri,
+            expected_repository_announcement_event_id=self.repository_event_id,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "buzz freshness requires a timezone-aware trusted evaluator time",
+            decision.violations,
+        )
+
     def test_repository_ref_and_channel_aliases_fail_closed(self) -> None:
         aliases = {
             "repository": "PermitMesh",

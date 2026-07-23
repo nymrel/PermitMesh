@@ -99,7 +99,7 @@ Run the complete reproducible demo:
 .\scripts\demo.ps1
 ```
 
-Run the 36-case adversarial conformance suite and save a receipt:
+Run the 41-case adversarial conformance suite and save a receipt:
 
 ```powershell
 permitmesh conformance examples\conformance-suite.json `
@@ -112,6 +112,9 @@ duplicate JSON keys, exact decimal budgets, malformed approvals, stale claims
 and fences, exact high-risk operation binding, replayed operation nonces,
 validity boundaries, unknown fields, non-finite input, required completion
 evidence, and trusted Buzz-context binding failures.
+The Buzz cases include omitted and timezone-naive evaluator time, noncanonical
+work aliases, core deny-path composition, and high-risk operation
+substitution.
 
 ## How it fits
 
@@ -134,7 +137,7 @@ PermitMesh is the policy decision point. The runtime, relay, or tool proxy remai
 permitmesh validate <contract>
 permitmesh digest <contract>
 permitmesh authorize <contract> <request> [--evaluation-time RFC3339]
-permitmesh authorize-buzz <contract> <request> <context> --context-key-env NAME --expected-community-uri URI --expected-repository-event-id HEX [--evaluation-time RFC3339]
+permitmesh authorize-buzz <contract> <request> <context> --context-key-env NAME --expected-community-uri URI --expected-repository-event-id HEX --evaluation-time RFC3339
 permitmesh verify-completion <contract> <report> [--evaluation-time RFC3339]
 permitmesh to-event <contract> [--created-at UNIX_SECONDS]
 permitmesh conformance <suite> [--receipt PATH] [--enforcement-boundary TEXT]

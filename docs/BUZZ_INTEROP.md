@@ -29,7 +29,8 @@ identity provenance as task authorization.
    enforcement point. That document must be no more than five minutes old.
 5. `permitmesh authorize-buzz` verifies the MAC, binds the configured community
    and repository-announcement event, binds the context owner and agent to the
-   contract, and binds repository, ref, and channel to the action request.
+   contract, binds repository, ref, and channel to the action request, and
+   requires a timezone-aware trusted evaluator time.
 6. If the decision allows a high-risk action, the policy-enforcement point
    atomically consumes the approved nonce and executes the exact bound
    tool-and-arguments operation.

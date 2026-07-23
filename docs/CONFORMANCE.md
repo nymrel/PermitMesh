@@ -41,6 +41,9 @@ The reference suite includes:
 - an allowed high-risk action bound to the exact approved operation and an
   unused nonce;
 - denial of the same high-risk operation after its nonce is marked consumed;
+- a trusted Buzz context plus denial for omitted or naive trusted evaluator
+  time, noncanonical work aliases, a core deny-path bypass attempt, and an
+  operation-argument substitution;
   and
 - complete and incomplete declared validation evidence.
 
