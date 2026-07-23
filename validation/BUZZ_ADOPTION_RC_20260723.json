@@ -3,7 +3,7 @@
   "candidate": "Buzz interoperability adoption slice",
   "status": "READY_FOR_COUNCIL_REVIEW",
   "branch": "feature/buzz-interop",
-  "implementation_commit": "c629d74c0f9c92bdddef79ed3d3fd6dceee7b518",
+  "implementation_commit": "3ec5093d447d4260960687618a36e159a7b83a62",
   "commit_signature": {
     "status": "good",
     "principal": "contact@jalenbuilds.com",
@@ -11,14 +11,14 @@
   },
   "validation": {
     "unit_tests": {
-      "passed": 86,
+      "passed": 88,
       "failed": 0
     },
     "conformance": {
-      "passed": 33,
+      "passed": 36,
       "failed": 0,
       "receipt": "validation/conformance-buzz-local.json",
-      "receipt_sha256": "9da53421408953c8a91a3906fbd94b28f9f3acddbedb734fde52eec71d514dda"
+      "receipt_sha256": "dfca6f9ea962e5286a89c9ad438f1b242e5bb66c7045dded7b93eae7468ba16f"
     },
     "ruff_format": "passed",
     "ruff_check": "passed",
@@ -26,7 +26,10 @@
     "bandit": "passed",
     "compileall": "passed",
     "package_build": "passed",
-    "clean_wheel_smoke": "not_run_cleanup_guard_blocked_before_execution"
+    "clean_wheel_smoke": {
+      "status": "passed",
+      "wheel_sha256": "8bd706d5103aa06cd3442f1de743e046700470d3709b8c5dfaa79101407d913a"
+    }
   },
   "security_boundary": {
     "permitmesh_role": "policy decision point",
@@ -39,13 +42,52 @@
     ],
     "permitmesh_checks": [
       "strict context schema with unknown-field denial",
+      "HMAC-SHA-256 context-producer authentication",
       "canonical contract digest binding",
+      "configured community endpoint binding",
+      "configured repository-announcement event binding",
       "owner and agent binding",
       "repository, ref, and channel binding",
       "freshness and future-time denial",
       "core PermitMesh action policy"
     ],
     "enforcement_point": "atomically consume a high-risk operation nonce and execute the exact bound operation"
+  },
+  "first_council_remediation": {
+    "source_run": "reports/councils/permitmesh-buzz-adoption-rc-20260723",
+    "source_status": "HOLD_INVALID_EVIDENCE",
+    "closed_findings": [
+      "clean wheel install and CLI smoke proof",
+      "schema and runtime community URI alignment",
+      "authenticated trusted-context producer",
+      "configured community binding",
+      "configured repository-announcement event binding",
+      "portable substitution and MAC adversarial cases",
+      "campaign sequence now places Buzz discussion after independent reaction"
+    ],
+    "remaining_external_conditions": [
+      "four-provider two-round council evidence",
+      "GitHub signing-key registration before required-signature protection",
+      "one independent reproduction before direct Buzz maintainer discussion"
+    ]
+  },
+  "repository_governance": {
+    "verified_at": "2026-07-23T19:55:00Z",
+    "main_required_checks": [
+      "test (ubuntu-latest, py3.11)",
+      "test (ubuntu-latest, py3.13)",
+      "test (windows-latest, py3.11)",
+      "test (windows-latest, py3.13)"
+    ],
+    "force_pushes": "disabled",
+    "branch_deletion": "disabled",
+    "vulnerability_alerts": "enabled",
+    "automated_security_fixes": "enabled",
+    "required_signatures": "pending_GitHub_signing_key_registration",
+    "history_author_emails": [
+      "contact@jalenbuilds.com",
+      "49699333+dependabot[bot]@users.noreply.github.com"
+    ]
   },
   "release_gate": {
     "package_publication": "held",

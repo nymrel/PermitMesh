@@ -1,0 +1,15 @@
+{
+  "status": "READY_FOR_COUNCIL_REVIEW",
+  "implementation_commit": "3ec5093d447d4260960687618a36e159a7b83a62",
+  "signature": "good",
+  "tests": "88/88",
+  "conformance": "36/36",
+  "ruff": "passed",
+  "mypy": "passed",
+  "bandit": "passed",
+  "build": "passed",
+  "clean_wheel_smoke": "passed",
+  "conformance_receipt_sha256": "dfca6f9ea962e5286a89c9ad438f1b242e5bb66c7045dded7b93eae7468ba16f",
+  "public_release": "held",
+  "posts_tags_outreach": "held"
+}
