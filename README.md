@@ -99,6 +99,12 @@ Run the complete reproducible demo:
 .\scripts\demo.ps1
 ```
 
+```bash
+./scripts/demo.sh
+```
+
+Both scripts run the identical five steps and exit-code contract; use whichever matches your OS (CI runs both `ubuntu-latest` and `windows-latest`).
+
 Run the 27-case adversarial conformance suite and save a receipt:
 
 ```powershell
