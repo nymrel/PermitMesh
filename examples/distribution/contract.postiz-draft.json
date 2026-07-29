@@ -1,0 +1,56 @@
+{
+  "contract_version": "0.2",
+  "issuer": {
+    "id": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "display_name": "Jalen Studio"
+  },
+  "subject": {
+    "id": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+    "display_name": "Distribution Worker"
+  },
+  "scope": {
+    "repositories": [
+      {
+        "name": "adfunnel",
+        "refs": ["feature/nymrel-distribution-core"],
+        "allow_paths": ["src/lib/distribution/**", "src/app/api/distribution/**"],
+        "deny_paths": [".env", ".env.*", "prisma/migrations/**"]
+      }
+    ],
+    "channels": ["nymrel/distribution"]
+  },
+  "capabilities": ["publish"],
+  "validity": {
+    "not_before": "2026-07-29T00:00:00Z",
+    "expires_at": "2026-08-05T00:00:00Z"
+  },
+  "limits": {
+    "max_files_changed": 0,
+    "max_commands": 1,
+    "max_cost_usd": 0
+  },
+  "approval_gates": [
+    {
+      "actions": ["publish"],
+      "min_approvals": 1,
+      "approvers": ["79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"]
+    }
+  ],
+  "operation_constraints": [
+    {
+      "action": "publish",
+      "operation_digest": "a53046c8428a859aeca1c6039be49becc09c0b38b09bff8c72d84a9b4cb4b55e",
+      "nonce": "nymrel-distribution-publish-001"
+    }
+  ],
+  "lifecycle": {
+    "claim_id": "claim-nymrel-distribution-demo",
+    "fencing_generation": 1
+  },
+  "validation": {
+    "required_commands": [
+      "permitmesh authorize examples/distribution/contract.postiz-draft.json examples/distribution/request.allowed.json --evaluation-time 2026-07-29T06:00:00Z"
+    ],
+    "required_artifacts": ["validation/nymrel-distribution-publish.json"]
+  }
+}
