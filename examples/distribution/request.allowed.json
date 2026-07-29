@@ -1,0 +1,29 @@
+{
+  "subject_id": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+  "action": "publish",
+  "channel": "nymrel/distribution",
+  "repository": "adfunnel",
+  "ref": "feature/nymrel-distribution-core",
+  "files_changed": 0,
+  "commands_used": 1,
+  "cost_usd": 0,
+  "claim_id": "claim-nymrel-distribution-demo",
+  "fencing_generation": 1,
+  "approvals": [
+    "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  ],
+  "operation": {
+    "tool": "postiz.posts.create",
+    "arguments": {
+      "approval_artifact_id": "approval-my-caddie-x-001",
+      "brand_id": "brand-my-caddie",
+      "content_sha256": "e2913f914b18ef58b136eeaf603bf01af752552edf649b05bea5b6ad401d747b",
+      "idempotency_key": "my-caddie:x:launch:001",
+      "integration_id": "postiz-test-x",
+      "publish_mode": "draft",
+      "source_event_id": "nymrel:my-caddie:launch:001"
+    }
+  },
+  "operation_nonce": "nymrel-distribution-publish-001",
+  "at": "2026-07-29T06:00:00Z"
+}
