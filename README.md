@@ -219,7 +219,7 @@ after removing secrets and sensitive workspace details.
 
 ## Project status
 
-PermitMesh is an independent Jalen Studio experiment. Publication is meant to
+PermitMesh is an independent [Nymrel](https://nymrel.com) experiment. Publication is meant to
 test whether the narrow software-change profile is useful. A Buzz design
 discussion remains gated on independent reproduction; publication alone does
 not justify an upstream proposal.
