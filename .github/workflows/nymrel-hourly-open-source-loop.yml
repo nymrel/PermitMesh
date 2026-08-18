@@ -1,38 +1,20 @@
 name: Nymrel hourly open-source loop
 
 on:
+  schedule:
+    - cron: "17 0,12 * * *"
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/nymrel-hourly-open-source-loop.yml
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-    paths:
-      - docs/hourly-loop-actions-probe.md
-  issues:
-    types:
-      - opened
 
 jobs:
   maintain:
-    name: Run activation canary
-    if: >-
-      github.event_name != 'issues' ||
-      (github.actor == 'JalenBuildsHub' &&
-       github.event.issue.title == '[control] Nymrel hourly loop activation canary')
+    name: Propose guarded maintenance
     uses: nymrel/PermitMesh/.github/workflows/nymrel-hourly-worker.yml@9bea36f40978a13e46952b1e31da97d1b6fd20a9
     with:
-      canary_mode: true
+      canary_mode: false
       guard_ref: 9bea36f40978a13e46952b1e31da97d1b6fd20a9
     permissions:
       actions: read
       contents: write
       issues: read
       pull-requests: write
-      statuses: write
       copilot-requests: write
