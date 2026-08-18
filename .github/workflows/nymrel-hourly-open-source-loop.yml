@@ -696,9 +696,48 @@ jobs:
             echo "_Control plane: JalenBuildsHub/portfolio-control#48_"
           } > proposal/pr-body.md
 
-          gh pr create \
+          if ! gh pr create \
             --draft \
             --base "${{ github.event.repository.default_branch }}" \
             --head "${{ steps.branch.outputs.name }}" \
             --title "chore: guarded hourly maintenance proposal" \
-            --body-file proposal/pr-body.md
+            --body-file proposal/pr-body.md; then
+            git push origin --delete "${{ steps.branch.outputs.name }}" || true
+            exit 1
+          fi
+
+  report-canary:
+    name: Report activation canary
+    needs:
+      - propose
+      - publish
+    if: always() && github.event_name == 'push' && github.repository == 'nymrel/PermitMesh'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Publish machine-readable canary status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROPOSE_RESULT: ${{ needs.propose.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="success"
+          if [ "$PROPOSE_RESULT" != "success" ] || \
+             [ "$PUBLISH_RESULT" = "failure" ] || \
+             [ "$PUBLISH_RESULT" = "cancelled" ]; then
+            state="failure"
+          fi
+
+          description="propose=$PROPOSE_RESULT publish=$PUBLISH_RESULT"
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state="$state" \
+            -f context="nymrel/hourly-loop-canary" \
+            -f description="$description" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
