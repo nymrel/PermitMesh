@@ -2,7 +2,7 @@ name: Nymrel hourly loop trigger probe
 
 on:
   schedule:
-    - cron: "10 10 18 8 *"
+    - cron: "*/5 * * * *"
   push:
     branches:
       - main
