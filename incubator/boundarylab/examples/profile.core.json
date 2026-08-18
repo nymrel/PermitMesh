@@ -1,0 +1,9 @@
+{
+  "description": "Observe every safe built-in BoundaryLab probe without asserting provider-specific policy.",
+  "expectations": {},
+  "probes": [
+    "*"
+  ],
+  "profile_id": "core-observation",
+  "schema": "nymrel.boundarylab.profile.v1"
+}
