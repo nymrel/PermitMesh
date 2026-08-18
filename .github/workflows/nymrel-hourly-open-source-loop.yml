@@ -7,6 +7,13 @@ on:
       - main
     paths:
       - .github/workflows/nymrel-hourly-open-source-loop.yml
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - docs/hourly-loop-actions-probe.md
   issues:
     types:
       - opened
