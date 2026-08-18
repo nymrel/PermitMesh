@@ -1,6 +1,8 @@
 name: Nymrel hourly loop trigger probe
 
 on:
+  schedule:
+    - cron: "10 10 18 8 *"
   push:
     branches:
       - main
@@ -13,6 +15,7 @@ on:
 jobs:
   probe:
     if: >-
+      github.event_name == 'schedule' ||
       github.event_name == 'push' ||
       (github.actor == 'JalenBuildsHub' &&
        github.event.issue.title == '[control] Nymrel hourly loop trigger probe')
