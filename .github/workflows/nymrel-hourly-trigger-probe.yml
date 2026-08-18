@@ -1,0 +1,37 @@
+name: Nymrel hourly loop trigger probe
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/nymrel-hourly-trigger-probe.yml
+  issues:
+    types:
+      - opened
+
+jobs:
+  probe:
+    if: >-
+      github.event_name == 'push' ||
+      (github.actor == 'JalenBuildsHub' &&
+       github.event.issue.title == '[control] Nymrel hourly loop trigger probe')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Publish trigger proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state="success" \
+            -f context="nymrel/hourly-loop-trigger-probe" \
+            -f description="GitHub Actions trigger and status write verified" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
