@@ -7,6 +7,12 @@ on:
     paths:
       - ".boundarylab-bootstrap/**"
       - ".github/workflows/boundarylab-bootstrap.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".boundarylab-bootstrap/**"
+      - ".github/workflows/boundarylab-bootstrap.yml"
 
 permissions:
   contents: write
