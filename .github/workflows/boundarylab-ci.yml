@@ -92,11 +92,21 @@ jobs:
       - name: Build wheel and source distribution
         run: python -m build incubator/boundarylab
 
-      - name: Smoke-test built wheel
+      - name: Smoke-test built wheel and both CLI entry paths
         run: |
           python -m pip install --force-reinstall incubator/boundarylab/dist/*.whl
-          python -m boundarylab --version
-          python -m boundarylab probes --json > /tmp/boundarylab-probes.json
+          python -c "from boundarylab import __version__; print(__version__)"
+          python -m boundarylab probes --json > /tmp/boundarylab-module-probes.json
+          boundarylab probes --json > /tmp/boundarylab-console-probes.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          module = json.loads(Path('/tmp/boundarylab-module-probes.json').read_text())
+          console = json.loads(Path('/tmp/boundarylab-console-probes.json').read_text())
+          if module != console:
+              raise SystemExit('module and console entry points disagree')
+          PY
 
       - name: Generate and independently verify evidence
         run: |
@@ -112,3 +122,5 @@ jobs:
           python -m boundarylab export "$RECEIPT" \
             --format junit \
             --out /tmp/boundarylab-junit.xml
+          test -s /tmp/boundarylab-report.md
+          test -s /tmp/boundarylab-junit.xml
