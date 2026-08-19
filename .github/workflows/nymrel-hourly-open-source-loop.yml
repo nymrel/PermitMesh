@@ -1,20 +1,19 @@
-name: Nymrel hourly open-source loop
+name: Nymrel GitHub Actions admission canary
 
 on:
-  schedule:
-    - cron: "17 0,12 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  maintain:
-    name: Propose guarded maintenance
-    uses: nymrel/PermitMesh/.github/workflows/nymrel-hourly-worker.yml@3a3e9ea17ca7655cb635f06f7fb51aa0b00ce1c5
-    with:
-      canary_mode: false
-      guard_ref: 3a3e9ea17ca7655cb635f06f7fb51aa0b00ce1c5
-    permissions:
-      actions: read
-      contents: write
-      issues: read
-      pull-requests: write
-      copilot-requests: write
+  admit:
+    name: Verify runner admission
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Emit admission proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'NYMREL_ACTIONS_ADMISSION_OK'
