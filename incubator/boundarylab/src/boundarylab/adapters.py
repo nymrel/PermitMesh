@@ -342,10 +342,12 @@ class VercelAdapter:
                     },
                 ) as sandbox:
                     process = sandbox.run_process(
-                        ["python", "-I", "-c", GUEST_PROGRAM],
+                        "python",
+                        ["-I", "-c", GUEST_PROGRAM],
                         check=False,
+                        capture_output=True,
                     )
-                    stdout: bytes | str = process.stdout
+                    stdout = process.stdout
                     return_code = int(process.returncode)
         except Exception:
             return AdapterOutcome(
@@ -354,6 +356,14 @@ class VercelAdapter:
                 {},
                 runtime,
                 "vercel-adapter-failed",
+            )
+        if stdout is None:
+            return AdapterOutcome(
+                self.name,
+                "error",
+                {},
+                runtime,
+                "vercel-output-not-captured",
             )
         raw_size = len(
             stdout.encode("utf-8")
