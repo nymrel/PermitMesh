@@ -75,7 +75,8 @@ def _subprocess_outcome(
         completed = subprocess.run(
             argv,
             check=False,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             env=environment,
             shell=False,
             timeout=authorization.limits.max_duration_seconds,
@@ -148,6 +149,7 @@ class LocalAdapter:
         del run_id
         runtime: dict[str, JSONValue] = {
             "adapter": self.name,
+            "environment_policy": "host-inherited-local-observation",
             "execution": "local-observation-only",
             "platform": platform.system().lower(),
             "python": (
@@ -183,6 +185,7 @@ class CommandAdapter:
         prefix = authorization.adapter_config.command_prefix
         runtime: dict[str, JSONValue] = {
             "adapter": self.name,
+            "environment_policy": "boundarylab-control-variables-only",
             "execution": "authorized-argv-prefix",
             "network_policy": "operator-provided",
         }
@@ -201,7 +204,7 @@ class CommandAdapter:
             environment=_guest_environment(
                 authorization,
                 network_probes=network_probes,
-                inherit=True,
+                inherit=False,
             ),
             authorization=authorization,
             runtime=runtime,
@@ -256,6 +259,7 @@ class DockerAdapter:
         runtime: dict[str, JSONValue] = {
             "adapter": self.name,
             "container_image": authorization.adapter_config.docker_image,
+            "environment_policy": "boundarylab-control-variables-only",
             "execution": "ephemeral-container",
             "network_policy": "deny-all",
             "privilege_policy": (
@@ -284,6 +288,7 @@ class VercelAdapter:
     ) -> AdapterOutcome:
         runtime: dict[str, JSONValue] = {
             "adapter": self.name,
+            "environment_policy": "boundarylab-control-variables-only",
             "execution": "ephemeral-microvm",
             "network_policy": "deny-all",
             "persistent": False,
