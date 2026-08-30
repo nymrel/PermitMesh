@@ -2,42 +2,205 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
-  test:
-    name: test (${{ matrix.os }}, py${{ matrix.python-version }})
-    timeout-minutes: 15
+  quality:
+    name: Lint, types, tests, conformance, and branch coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Install the reviewed development toolchain
+        # Exact direct tools are intentional package inputs.
+        # zizmor: ignore[adhoc-packages]
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip==26.2.1
+          python -m pip install --disable-pip-version-check -e ".[dev]"
+
+      - name: Run source, schema, and conformance checks
+        run: |
+          python -c "from pathlib import Path; Path('artifacts').mkdir(exist_ok=True)"
+          python -m compileall -q src tests scripts .github/nymrel-hourly
+          python -m ruff format --check .
+          python -m ruff check .
+          python -m mypy
+          python -m coverage run -m pytest --junitxml=artifacts/junit-quality.xml
+          python -m coverage xml -o artifacts/coverage.xml
+          python -m coverage report
+          permitmesh conformance examples/conformance-suite.json --receipt artifacts/conformance.json
+
+      - name: Retain quality evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: permitmesh-quality-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 7
+
+  compatibility:
+    name: Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-latest"]
-        python-version: ["3.11", "3.13"]
-    runs-on: ${{ matrix.os }}
+        include:
+          - { os: ubuntu-24.04, python-version: '3.11' }
+          - { os: ubuntu-24.04, python-version: '3.12' }
+          - { os: ubuntu-24.04, python-version: '3.13' }
+          - { os: ubuntu-24.04, python-version: '3.14' }
+          - { os: windows-2025, python-version: '3.11' }
+          - { os: windows-2025, python-version: '3.14' }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m pip install ".[test]"
-      - run: python -m ruff format --check src tests
-      - run: python -m ruff check src tests
-      - run: python -m mypy src
-      - run: python -m bandit -q -r src
-      - run: python -m build
-      - run: python -m unittest discover -s tests -v
-      - run: python -m compileall -q src tests
-      - run: permitmesh conformance examples/conformance-suite.json
-      - name: Validate allowed fixture
-        run: permitmesh authorize examples/contract.valid.json examples/request.allowed.json --evaluation-time 2026-07-23T12:00:00Z
-      - name: Verify denied fixture
+
+      - name: Install source and exact test runner
+        # Exact direct tools are intentional package inputs.
+        # zizmor: ignore[adhoc-packages]
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip==26.2.1
+          python -m pip install --disable-pip-version-check -e ".[test]"
+
+      - name: Run compatibility tests
+        run: python -m pytest
+
+  distribution:
+    name: Reproducible distribution and clean consumer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Build twice and verify byte identity
+        # Exact build tools are intentional release inputs.
+        # zizmor: ignore[adhoc-packages]
         shell: bash
         run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --upgrade pip==26.2.1
+          python -m pip install --disable-pip-version-check build==1.6.0 twine==7.0.0
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          python -m build --outdir dist-a
+          python -m build --outdir dist-b
+          python -m twine check dist-a/* dist-b/*
+          mkdir -p artifacts
+          python scripts/verify-release.py dist-a > artifacts/release-receipt.json
+          python scripts/verify-release.py dist-b > artifacts/release-receipt-second.json
+          python - <<'PY'
+          from pathlib import Path
+
+          first = {path.name: path.read_bytes() for path in Path("dist-a").iterdir()}
+          second = {path.name: path.read_bytes() for path in Path("dist-b").iterdir()}
+          if first != second:
+              raise SystemExit("clean distribution builds are not byte-identical")
+          PY
+
+      - name: Exercise a clean wheel consumer
+        # The just-built local wheel is an intentional ad hoc package input.
+        # zizmor: ignore[adhoc-packages]
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t wheels < <(find dist-a -maxdepth 1 -type f -name '*.whl' -print)
+          test "${#wheels[@]}" -eq 1
+          python -m venv "${RUNNER_TEMP}/permitmesh-consumer"
+          consumer="${RUNNER_TEMP}/permitmesh-consumer/bin"
+          "${consumer}/python" -m pip install --disable-pip-version-check --no-deps "${wheels[0]}"
+          "${consumer}/python" -m pip check
+          "${consumer}/permitmesh" --version
+          "${consumer}/permitmesh" validate examples/contract.valid.json
+          "${consumer}/permitmesh" authorize examples/contract.valid.json examples/request.allowed.json --evaluation-time 2026-07-23T12:00:00Z
           set +e
-          permitmesh authorize examples/contract.valid.json examples/request.denied.json --evaluation-time 2026-07-23T12:00:00Z
-          code=$?
+          "${consumer}/permitmesh" authorize examples/contract.valid.json examples/request.denied.json --evaluation-time 2026-07-23T12:00:00Z
+          denied_code=$?
           set -e
-          test "$code" -eq 3
+          test "${denied_code}" -eq 3
+          "${consumer}/permitmesh" conformance examples/conformance-suite.json
+          "${consumer}/permitmesh" verify-completion examples/contract.valid.json examples/completion.valid.json --evaluation-time 2026-07-23T12:00:00Z
+
+      - name: Upload verified distributions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: permitmesh-dist-${{ github.sha }}
+          path: |
+            dist-a/
+            artifacts/release-receipt.json
+          if-no-files-found: error
+          retention-days: 7
+
+  security:
+    name: Dependency, source, and workflow security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Scan source and audit the reviewed environment
+        # Exact scanners are intentional package inputs.
+        # zizmor: ignore[adhoc-packages]
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip==26.2.1
+          python -m pip install --disable-pip-version-check --no-deps -e .
+          python -m pip install --disable-pip-version-check bandit==1.9.4 pip-audit==2.10.1
+          bandit -q -r src scripts .github/nymrel-hourly -ll -ii
+          pip-audit --strict .
+
+      - name: Audit GitHub Actions definitions
+        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+        with:
+          advanced-security: false
+          annotations: true
+          min-confidence: medium
+          min-severity: medium
+          online-audits: false
+          persona: auditor
+          version: 1.29.0

@@ -20,6 +20,10 @@ permitmesh conformance examples\conformance-suite.json `
 
 Do not claim a stronger boundary than the run exercised.
 
+`--enforcement-boundary` is a caller declaration recorded in the receipt; the
+reference runner cannot verify that declaration. Reviewers must corroborate it
+against the adapter and execution evidence before treating it as fact.
+
 ## Required cases
 
 The reference suite includes:
@@ -46,6 +50,11 @@ The reference suite includes:
 
 The final case is intentionally malformed JSON. Strict implementations should
 reject it before policy evaluation.
+
+The reference runner also bounds JSON files, nesting, canonical structure,
+suite cases, expected violation fragments, identifiers, enforcement-boundary
+text, and fixture paths. Unknown suite and case fields fail closed. These are
+runner safety and receipt-integrity controls, not proof of runtime enforcement.
 
 The reference conformance runner supplies deterministic nonce state to exercise
 the decision contract. It does not atomically consume a nonce or execute the

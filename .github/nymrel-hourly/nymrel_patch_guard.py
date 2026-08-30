@@ -8,10 +8,17 @@ import subprocess
 MAX_FILES = 8
 MAX_LINES = 600
 MAX_FILE_BYTES = 200_000
+MAX_PATH_CHARS = 512
 
 FORBIDDEN_PREFIXES = (
+    ".agent/",
+    ".agents/",
+    ".claude/",
+    ".cursor/",
     ".github/",
     ".gitlab/",
+    ".idea/",
+    ".vscode/",
     ".circleci/",
     ".azure/",
     ".devcontainer/",
@@ -69,6 +76,9 @@ FORBIDDEN_BASENAMES = {
     "license.md",
     "license.txt",
     "security.md",
+    "agent.md",
+    "agents.md",
+    "copilot-instructions.md",
     "codeowners",
     "schema.prisma",
 }
@@ -110,8 +120,7 @@ def run(*args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(
         args,
         check=check,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
 
 
@@ -120,6 +129,26 @@ def append_output(path: str | None, value: str) -> None:
         return
     with pathlib.Path(path).open("a", encoding="utf-8") as handle:
         handle.write(value + "\n")
+
+
+def normalize_repo_path(raw_name: str) -> str:
+    normalized = raw_name.replace("\\", "/")
+    if (
+        not normalized
+        or len(normalized) > MAX_PATH_CHARS
+        or normalized.startswith("/")
+        or re.match(r"^[A-Za-z]:", normalized) is not None
+        or "`" in normalized
+        or any(
+            ord(character) < 32 or ord(character) == 127 or 0xD800 <= ord(character) <= 0xDFFF
+            for character in normalized
+        )
+    ):
+        raise ValueError("path is not a bounded portable repository-relative path")
+    parts = normalized.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("path contains an empty or traversal segment")
+    return normalized
 
 
 def main() -> int:
@@ -144,9 +173,7 @@ def main() -> int:
 
     deleted = [
         item.decode("utf-8", "surrogateescape")
-        for item in run(
-            *diff_prefix, "--name-only", "--diff-filter=D", "-z"
-        ).stdout.split(b"\0")
+        for item in run(*diff_prefix, "--name-only", "--diff-filter=D", "-z").stdout.split(b"\0")
         if item
     ]
     if deleted:
@@ -180,22 +207,24 @@ def main() -> int:
         if len(parts) != 3:
             violations.append("unable to parse git numstat")
             continue
-        added, removed, path = parts
+        added, removed, numstat_path = parts
         if added == "-" or removed == "-":
-            violations.append(f"binary change is not allowed: {path}")
+            violations.append(f"binary change is not allowed: {numstat_path}")
             continue
         total_lines += int(added) + int(removed)
     if total_lines > MAX_LINES:
-        violations.append(
-            f"changed line count {total_lines} exceeds limit {MAX_LINES}"
-        )
+        violations.append(f"changed line count {total_lines} exceeds limit {MAX_LINES}")
 
-    for raw_name in names:
-        normalized = raw_name.replace("\\", "/").lstrip("./")
+    for index, raw_name in enumerate(names):
+        try:
+            normalized = normalize_repo_path(raw_name)
+        except ValueError as exc:
+            violations.append(f"invalid repository path at index {index}: {exc}")
+            continue
         lower = normalized.lower()
-        path = pathlib.PurePosixPath(lower)
-        basename = path.name
-        segments = set(path.parts)
+        repository_path = pathlib.PurePosixPath(lower)
+        basename = repository_path.name
+        segments = set(repository_path.parts)
 
         if lower.startswith(FORBIDDEN_PREFIXES):
             violations.append(f"protected path: {raw_name}")
@@ -206,26 +235,21 @@ def main() -> int:
         if lower.endswith(FORBIDDEN_SUFFIXES):
             violations.append(f"protected file type: {raw_name}")
 
-        local = pathlib.Path(raw_name)
+        local = pathlib.Path(normalized)
         if local.exists() and local.is_symlink():
             violations.append(f"symlink is not allowed: {raw_name}")
         if local.exists() and local.is_file():
             size = local.stat().st_size
             if size > MAX_FILE_BYTES:
-                violations.append(
-                    f"file {raw_name} is {size} bytes; limit is {MAX_FILE_BYTES}"
-                )
+                violations.append(f"file {raw_name} is {size} bytes; limit is {MAX_FILE_BYTES}")
 
     check_result = run(*diff_prefix, "--check", check=False)
     if check_result.returncode != 0:
         violations.append(
-            "git diff --check failed: "
-            + check_result.stdout.decode("utf-8", "replace")[:1000]
+            "git diff --check failed: " + check_result.stdout.decode("utf-8", "replace")[:1000]
         )
 
-    diff_text = run(
-        *diff_prefix, "--unified=0", "--no-ext-diff"
-    ).stdout.decode("utf-8", "replace")
+    diff_text = run(*diff_prefix, "--unified=0", "--no-ext-diff").stdout.decode("utf-8", "replace")
     added_text = "\n".join(
         line[1:]
         for line in diff_text.splitlines()
@@ -233,9 +257,7 @@ def main() -> int:
     )
     for pattern in SECRET_PATTERNS:
         if pattern.search(added_text):
-            violations.append(
-                f"possible credential/private-key pattern: {pattern.pattern}"
-            )
+            violations.append(f"possible credential/private-key pattern: {pattern.pattern}")
 
     if violations:
         print("Patch guard rejected the proposal:")
@@ -248,7 +270,8 @@ def main() -> int:
         "",
         f"- Files: {len(names)} / {MAX_FILES} maximum",
         f"- Changed lines: {total_lines} / {MAX_LINES} maximum",
-        "- Protected-path, binary, symlink, deletion, rename, mode, size, whitespace, and credential-pattern checks: passed",
+        "- Protected-path, binary, symlink, deletion, rename, mode, size, "
+        "whitespace, and credential-pattern checks: passed",
         "",
         "#### Files",
     ]
