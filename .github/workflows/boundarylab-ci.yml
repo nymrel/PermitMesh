@@ -1,5 +1,6 @@
 name: BoundaryLab incubator
 
+# This workflow remains path-scoped while BoundaryLab is an unmerged incubator.
 on:
   pull_request:
     paths:
