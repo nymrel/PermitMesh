@@ -35,3 +35,9 @@ permitmesh = "permitmesh.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff.lint]
+# Ruff 0.16 expanded its implicit default from 59 to 413 rules. Keep the
+# repository's existing pre-0.16 lint contract explicit so tool upgrades do not
+# silently redefine CI policy; new rules can be adopted intentionally later.
+select = ["E4", "E7", "E9", "F"]
