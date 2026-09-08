@@ -1,18 +1,28 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
-from decimal import Decimal
-from fnmatch import fnmatchcase
 import hashlib
 import json
 import math
 import re
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
+from fnmatch import fnmatchcase
 from typing import Any
-
 
 SUPPORTED_VERSION = "0.2"
 IMPLEMENTATION_VERSION = "0.2.0"
+MAX_CANONICAL_DEPTH = 64
+MAX_CANONICAL_NODES = 10_000
+MAX_CANONICAL_STRING_CHARS = 65_536
+MAX_CANONICAL_NUMBER_CHARS = 1_024
+MAX_COLLECTION_ITEMS = 256
+MAX_REPLAY_NONCES = 100_000
+MAX_PATH_CHARS = 4_096
+MAX_PATH_SEGMENTS = 128
+MAX_PATH_SEGMENT_CHARS = 255
+MAX_PATTERN_CHARS = 1_024
+MAX_PATTERN_ITEMS = 128
 PATH_REQUIRED_CAPABILITIES = {"read", "edit"}
 HIGH_RISK_CAPABILITIES = {"shell", "test", "commit", "deploy", "publish", "spend"}
 KNOWN_CAPABILITIES = {
@@ -67,7 +77,12 @@ class Decision:
         return asdict(self)
 
 
-def canonical_json(value: Any) -> str:
+def _canonical_json(value: Any, *, depth: int, remaining_nodes: list[int]) -> str:
+    if depth > MAX_CANONICAL_DEPTH:
+        raise ValueError(f"canonical JSON exceeds maximum depth {MAX_CANONICAL_DEPTH}")
+    remaining_nodes[0] -= 1
+    if remaining_nodes[0] < 0:
+        raise ValueError(f"canonical JSON exceeds maximum node count {MAX_CANONICAL_NODES}")
     if value is None:
         return "null"
     if value is True:
@@ -75,9 +90,18 @@ def canonical_json(value: Any) -> str:
     if value is False:
         return "false"
     if isinstance(value, str):
+        if len(value) > MAX_CANONICAL_STRING_CHARS:
+            raise ValueError(
+                f"canonical JSON string exceeds maximum length {MAX_CANONICAL_STRING_CHARS}"
+            )
         return json.dumps(value, ensure_ascii=False)
     if isinstance(value, int):
-        return str(value)
+        if value.bit_length() > 3_400:
+            raise ValueError("canonical JSON integer is too large")
+        rendered = str(value)
+        if len(rendered) > MAX_CANONICAL_NUMBER_CHARS:
+            raise ValueError("canonical JSON integer is too large")
+        return rendered
     if isinstance(value, Decimal):
         if not value.is_finite():
             raise ValueError("canonical JSON numbers must be finite")
@@ -86,6 +110,8 @@ def canonical_json(value: Any) -> str:
         sign, raw_digits, exponent = value.as_tuple()
         if not isinstance(exponent, int):
             raise ValueError("canonical JSON numbers must be finite")
+        if len(raw_digits) > MAX_CANONICAL_NUMBER_CHARS:
+            raise ValueError("canonical JSON number is too precise")
         digits = "".join(str(digit) for digit in raw_digits)
         while len(digits) > 1 and digits.endswith("0"):
             digits = digits[:-1]
@@ -105,25 +131,44 @@ def canonical_json(value: Any) -> str:
                 mantissa += "." + digits[1:]
             exponent_sign = "+" if adjusted_exponent >= 0 else ""
             number = f"{mantissa}e{exponent_sign}{adjusted_exponent}"
-        return ("-" if sign else "") + number
+        rendered = ("-" if sign else "") + number
+        if len(rendered) > MAX_CANONICAL_NUMBER_CHARS:
+            raise ValueError("canonical JSON number is too large")
+        return rendered
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError("canonical JSON numbers must be finite")
-        return canonical_json(Decimal(str(value)))
+        return _canonical_json(Decimal(str(value)), depth=depth, remaining_nodes=remaining_nodes)
     if isinstance(value, (list, tuple)):
-        return "[" + ",".join(canonical_json(item) for item in value) + "]"
+        return (
+            "["
+            + ",".join(
+                _canonical_json(item, depth=depth + 1, remaining_nodes=remaining_nodes)
+                for item in value
+            )
+            + "]"
+        )
     if isinstance(value, dict):
         if not all(isinstance(key, str) for key in value):
             raise TypeError("canonical JSON object keys must be strings")
         return (
             "{"
             + ",".join(
-                f"{canonical_json(key)}:{canonical_json(value[key])}"
+                f"{_canonical_json(key, depth=depth + 1, remaining_nodes=remaining_nodes)}:"
+                f"{_canonical_json(value[key], depth=depth + 1, remaining_nodes=remaining_nodes)}"
                 for key in sorted(value)
             )
             + "}"
         )
     raise TypeError(f"unsupported canonical JSON value: {type(value).__name__}")
+
+
+def canonical_json(value: Any) -> str:
+    return _canonical_json(
+        value,
+        depth=0,
+        remaining_nodes=[MAX_CANONICAL_NODES],
+    )
 
 
 def contract_digest(contract: Any) -> str:
@@ -145,14 +190,14 @@ def _parse_time(value: Any, field: str, violations: list[str]) -> datetime | Non
         violations.append(f"{field} must be an RFC 3339 timestamp")
         return None
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         violations.append(f"{field} must be an RFC 3339 timestamp")
         return None
     if parsed.tzinfo is None:
         violations.append(f"{field} must include a timezone")
         return None
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def _is_safe_relative_path(value: str) -> bool:
@@ -160,17 +205,18 @@ def _is_safe_relative_path(value: str) -> bool:
     parts = normalized.split("/")
     return (
         bool(value)
+        and len(value) <= MAX_PATH_CHARS
+        and len(parts) <= MAX_PATH_SEGMENTS
         and "\x00" not in value
+        and all(len(part) <= MAX_PATH_SEGMENT_CHARS for part in parts)
+        and all(ord(character) >= 32 and ord(character) != 127 for character in value)
         and re.match(r"^[A-Za-z]:", normalized) is None
         and not normalized.startswith("/")
         and all(part not in {"", ".", ".."} for part in parts)
         and all(":" not in part for part in parts)
         and all(not part.endswith((".", " ")) for part in parts)
         and all(WINDOWS_SHORT_NAME_PATTERN.search(part) is None for part in parts)
-        and all(
-            part.split(".", 1)[0].casefold() not in WINDOWS_RESERVED_NAMES
-            for part in parts
-        )
+        and all(part.split(".", 1)[0].casefold() not in WINDOWS_RESERVED_NAMES for part in parts)
     )
 
 
@@ -181,8 +227,15 @@ def _validate_patterns(
         requirement = "an array" if allow_empty else "a non-empty array"
         violations.append(f"{field} must be {requirement}")
         return
+    if len(patterns) > MAX_PATTERN_ITEMS:
+        violations.append(f"{field} must contain at most {MAX_PATTERN_ITEMS} patterns")
+        return
     for index, pattern in enumerate(patterns):
-        if not isinstance(pattern, str) or not _is_safe_relative_path(pattern):
+        if (
+            not isinstance(pattern, str)
+            or len(pattern) > MAX_PATTERN_CHARS
+            or not _is_safe_relative_path(pattern)
+        ):
             violations.append(f"{field}[{index}] must be a safe relative path pattern")
     if all(isinstance(pattern, str) for pattern in patterns) and len(patterns) != len(
         set(patterns)
@@ -197,11 +250,32 @@ def _reject_unknown_fields(
         violations.append(f"{field} contains unknown field: {unknown}")
 
 
+def _too_many_items(
+    value: list[Any] | tuple[Any, ...] | set[Any] | frozenset[Any],
+    field: str,
+    violations: list[str],
+    *,
+    maximum: int = MAX_COLLECTION_ITEMS,
+) -> bool:
+    if len(value) <= maximum:
+        return False
+    violations.append(f"{field} must contain at most {maximum} items")
+    return True
+
+
+def _is_bounded_text(value: Any, *, maximum: int = MAX_CANONICAL_STRING_CHARS) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value.strip())
+        and len(value) <= maximum
+        and all(ord(character) >= 32 and ord(character) != 127 for character in value)
+    )
+
+
 def validate_contract(contract: Any) -> tuple[str, ...]:
     violations: list[str] = []
     if not isinstance(contract, dict):
         return ("contract must be a JSON object",)
-
     required = {
         "contract_version",
         "issuer",
@@ -228,11 +302,7 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
 
     for field in ("issuer", "subject"):
         value = contract[field]
-        if (
-            not isinstance(value, dict)
-            or not isinstance(value.get("id"), str)
-            or not value["id"]
-        ):
+        if not isinstance(value, dict) or not isinstance(value.get("id"), str) or not value["id"]:
             violations.append(f"{field}.id must be a non-empty string")
         elif isinstance(value, dict):
             _reject_unknown_fields(value, {"id", "display_name"}, field, violations)
@@ -242,14 +312,14 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
     capabilities = contract["capabilities"]
     if not isinstance(capabilities, list) or not capabilities:
         violations.append("capabilities must be a non-empty array")
+    elif _too_many_items(capabilities, "capabilities", violations):
+        pass
     elif not all(isinstance(capability, str) for capability in capabilities):
         violations.append("capabilities must contain strings")
     else:
         unknown = sorted(set(capabilities) - KNOWN_CAPABILITIES)
         if unknown:
-            violations.append(
-                f"capabilities contains unknown values: {', '.join(unknown)}"
-            )
+            violations.append(f"capabilities contains unknown values: {', '.join(unknown)}")
         if len(capabilities) != len(set(capabilities)):
             violations.append("capabilities must not contain duplicates")
 
@@ -261,6 +331,8 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
         repositories = scope.get("repositories")
         if not isinstance(repositories, list) or not repositories:
             violations.append("scope.repositories must be a non-empty array")
+        elif _too_many_items(repositories, "scope.repositories", violations):
+            pass
         else:
             names: set[str] = set()
             for index, repo in enumerate(repositories):
@@ -282,17 +354,15 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
                 else:
                     names.add(name)
                 refs = repo.get("refs")
-                if (
-                    not isinstance(refs, list)
-                    or not refs
-                    or not all(isinstance(ref, str) and ref for ref in refs)
-                ):
+                if not isinstance(refs, list) or not refs:
+                    violations.append(f"{prefix}.refs must be a non-empty string array")
+                elif _too_many_items(refs, f"{prefix}.refs", violations, maximum=MAX_PATTERN_ITEMS):
+                    pass
+                elif not all(_is_bounded_text(ref, maximum=MAX_PATTERN_CHARS) for ref in refs):
                     violations.append(f"{prefix}.refs must be a non-empty string array")
                 elif len(refs) != len(set(refs)):
                     violations.append(f"{prefix}.refs must not contain duplicates")
-                _validate_patterns(
-                    repo.get("allow_paths"), f"{prefix}.allow_paths", violations
-                )
+                _validate_patterns(repo.get("allow_paths"), f"{prefix}.allow_paths", violations)
                 _validate_patterns(
                     repo.get("deny_paths"),
                     f"{prefix}.deny_paths",
@@ -305,6 +375,8 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
             isinstance(channel, str) and channel for channel in channels
         ):
             violations.append("scope.channels must be a string array")
+        elif _too_many_items(channels, "scope.channels", violations):
+            pass
         elif len(channels) != len(set(channels)):
             violations.append("scope.channels must not contain duplicates")
 
@@ -312,15 +384,9 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
     if not isinstance(validity, dict):
         violations.append("validity must be an object")
     else:
-        _reject_unknown_fields(
-            validity, {"not_before", "expires_at"}, "validity", violations
-        )
-        not_before = _parse_time(
-            validity.get("not_before"), "validity.not_before", violations
-        )
-        expires_at = _parse_time(
-            validity.get("expires_at"), "validity.expires_at", violations
-        )
+        _reject_unknown_fields(validity, {"not_before", "expires_at"}, "validity", violations)
+        not_before = _parse_time(validity.get("not_before"), "validity.not_before", violations)
+        expires_at = _parse_time(validity.get("expires_at"), "validity.expires_at", violations)
         if not_before and expires_at and expires_at <= not_before:
             violations.append("validity.expires_at must be after validity.not_before")
 
@@ -340,13 +406,13 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
                 violations.append(f"limits.{field} must be a non-negative integer")
         cost = limits.get("max_cost_usd")
         if not _is_finite_nonnegative_number(cost):
-            violations.append(
-                "limits.max_cost_usd must be a finite non-negative number"
-            )
+            violations.append("limits.max_cost_usd must be a finite non-negative number")
 
     gates = contract["approval_gates"]
     if not isinstance(gates, list):
         violations.append("approval_gates must be an array")
+    elif _too_many_items(gates, "approval_gates", violations):
+        pass
     else:
         for index, gate in enumerate(gates):
             prefix = f"approval_gates[{index}]"
@@ -373,26 +439,24 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
             if (
                 not isinstance(approvers, list)
                 or not approvers
-                or not all(
-                    isinstance(approver, str) and approver for approver in approvers
-                )
+                or not all(isinstance(approver, str) and approver for approver in approvers)
             ):
-                violations.append(
-                    f"{prefix}.approvers must be a non-empty string array"
-                )
+                violations.append(f"{prefix}.approvers must be a non-empty string array")
+            elif _too_many_items(approvers, f"{prefix}.approvers", violations):
+                pass
             else:
                 if len(approvers) != len(set(approvers)):
                     violations.append(f"{prefix}.approvers must not contain duplicates")
                 if isinstance(minimum, int) and minimum > len(set(approvers)):
-                    violations.append(
-                        f"{prefix}.min_approvals exceeds unique approvers"
-                    )
+                    violations.append(f"{prefix}.min_approvals exceeds unique approvers")
 
     constraints = contract["operation_constraints"]
     constrained_actions: set[str] = set()
     seen_nonces: set[str] = set()
     if not isinstance(constraints, list):
         violations.append("operation_constraints must be an array")
+    elif _too_many_items(constraints, "operation_constraints", violations):
+        pass
     else:
         for index, constraint in enumerate(constraints):
             prefix = f"operation_constraints[{index}]"
@@ -415,9 +479,7 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
             else:
                 constrained_actions.add(action)
             if not isinstance(digest, str) or SHA256_PATTERN.fullmatch(digest) is None:
-                violations.append(
-                    f"{prefix}.operation_digest must be lowercase SHA-256 hex"
-                )
+                violations.append(f"{prefix}.operation_digest must be lowercase SHA-256 hex")
             if not isinstance(nonce, str) or NONCE_PATTERN.fullmatch(nonce) is None:
                 violations.append(f"{prefix}.nonce must be 16-128 safe characters")
             elif nonce in seen_nonces:
@@ -445,11 +507,7 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
         if not isinstance(lifecycle.get("claim_id"), str) or not lifecycle["claim_id"]:
             violations.append("lifecycle.claim_id must be a non-empty string")
         generation = lifecycle.get("fencing_generation")
-        if (
-            not isinstance(generation, int)
-            or isinstance(generation, bool)
-            or generation < 1
-        ):
+        if not isinstance(generation, int) or isinstance(generation, bool) or generation < 1:
             violations.append("lifecycle.fencing_generation must be a positive integer")
 
     validation = contract["validation"]
@@ -468,6 +526,8 @@ def validate_contract(contract: Any) -> tuple[str, ...]:
                 isinstance(item, str) and item for item in value
             ):
                 violations.append(f"validation.{field} must be a string array")
+            elif _too_many_items(value, f"validation.{field}", violations):
+                pass
             elif len(value) != len(set(value)):
                 violations.append(f"validation.{field} must not contain duplicates")
 
@@ -494,49 +554,42 @@ def _is_finite_nonnegative_number(value: Any) -> bool:
     return math.isfinite(value) and value >= 0
 
 
-def _as_decimal(value: int | float | Decimal) -> Decimal:
+def _as_decimal(value: float | Decimal) -> Decimal:
     return value if isinstance(value, Decimal) else Decimal(str(value))
 
 
 def _matches_glob(value: str, pattern: str) -> bool:
     value_parts = tuple(value.replace("\\", "/").split("/"))
     pattern_parts = tuple(pattern.replace("\\", "/").split("/"))
-    memo: dict[tuple[int, int], bool] = {}
-
-    def match(value_index: int, pattern_index: int) -> bool:
-        key = (value_index, pattern_index)
-        if key in memo:
-            return memo[key]
-        if pattern_index == len(pattern_parts):
-            result = value_index == len(value_parts)
-        elif pattern_parts[pattern_index] == "**":
-            result = match(value_index, pattern_index + 1) or (
-                value_index < len(value_parts) and match(value_index + 1, pattern_index)
-            )
+    previous = [False] * (len(value_parts) + 1)
+    previous[0] = True
+    for pattern_part in pattern_parts:
+        current = [False] * (len(value_parts) + 1)
+        if pattern_part == "**":
+            current[0] = previous[0]
+            for value_index in range(1, len(value_parts) + 1):
+                current[value_index] = previous[value_index] or current[value_index - 1]
         else:
-            result = (
-                value_index < len(value_parts)
-                and fnmatchcase(value_parts[value_index], pattern_parts[pattern_index])
-                and match(value_index + 1, pattern_index + 1)
-            )
-        memo[key] = result
-        return result
-
-    return match(0, 0)
+            for value_index in range(1, len(value_parts) + 1):
+                current[value_index] = previous[value_index - 1] and fnmatchcase(
+                    value_parts[value_index - 1], pattern_part
+                )
+        previous = current
+    return previous[len(value_parts)]
 
 
 def _trusted_now(now: datetime | None, violations: list[str]) -> datetime | None:
     if now is None:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
         violations.append("evaluator time must include a timezone")
         return None
-    return now.astimezone(timezone.utc)
+    return now.astimezone(UTC)
 
 
 def authorize(
-    contract: dict[str, Any],
-    request: dict[str, Any],
+    contract: Any,
+    request: Any,
     *,
     now: datetime | None = None,
     consumed_nonces: frozenset[str] | set[str] | None = None,
@@ -555,8 +608,13 @@ def authorize(
     if violations:
         return Decision(False, digest, tuple(violations), tuple(checks))
     if not isinstance(request, dict):
+        return Decision(False, digest, ("request must be a JSON object",), tuple(checks))
+    if len(request) > MAX_COLLECTION_ITEMS:
         return Decision(
-            False, digest, ("request must be a JSON object",), tuple(checks)
+            False,
+            digest,
+            (f"request must contain at most {MAX_COLLECTION_ITEMS} fields",),
+            tuple(checks),
         )
     request_fields = {
         "subject_id",
@@ -585,18 +643,22 @@ def authorize(
     }
     for field in sorted(required_request_fields - request.keys()):
         violations.append(f"missing required request field: {field}")
+    for field, maximum in {
+        "subject_id": MAX_CANONICAL_STRING_CHARS,
+        "repository": MAX_CANONICAL_STRING_CHARS,
+        "ref": MAX_PATTERN_CHARS,
+        "claim_id": MAX_CANONICAL_STRING_CHARS,
+    }.items():
+        if field in request and not _is_bounded_text(request[field], maximum=maximum):
+            violations.append(f"request.{field} must be a bounded non-empty string")
 
     # The evaluator's clock is authoritative. A request's self-declared time is
     # parsed for receipt quality but can never extend or revive authorization.
     effective_now = _trusted_now(now, violations)
     if "at" in request:
         _parse_time(request["at"], "request.at", violations)
-    not_before = _parse_time(
-        contract["validity"]["not_before"], "validity.not_before", violations
-    )
-    expires_at = _parse_time(
-        contract["validity"]["expires_at"], "validity.expires_at", violations
-    )
+    not_before = _parse_time(contract["validity"]["not_before"], "validity.not_before", violations)
+    expires_at = _parse_time(contract["validity"]["expires_at"], "validity.expires_at", violations)
     if not_before and effective_now is not None and effective_now < not_before:
         violations.append("contract is not active yet")
     if expires_at and effective_now is not None and effective_now >= expires_at:
@@ -609,9 +671,7 @@ def authorize(
 
     configured_channels = contract["scope"]["channels"]
     requested_channel = request.get("channel")
-    if "channel" in request and (
-        not isinstance(requested_channel, str) or not requested_channel
-    ):
+    if "channel" in request and (not _is_bounded_text(requested_channel)):
         violations.append("request.channel must be a non-empty string")
     if configured_channels and requested_channel not in configured_channels:
         violations.append(f"channel {requested_channel!r} is outside scope")
@@ -638,15 +698,13 @@ def authorize(
         nonce = request.get("operation_nonce")
         operation_is_valid = operation is not None
         if operation is None:
-            violations.append(
-                f"request.operation is required for high-risk action {action!r}"
-            )
+            violations.append(f"request.operation is required for high-risk action {action!r}")
         else:
             _reject_unknown_fields(
                 operation, {"tool", "arguments"}, "request.operation", violations
             )
-            if not isinstance(operation.get("tool"), str) or not operation["tool"]:
-                violations.append("request.operation.tool must be a non-empty string")
+            if not _is_bounded_text(operation.get("tool")):
+                violations.append("request.operation.tool must be a bounded non-empty string")
                 operation_is_valid = False
             if not isinstance(operation.get("arguments"), dict):
                 violations.append("request.operation.arguments must be an object")
@@ -654,13 +712,13 @@ def authorize(
         if not isinstance(nonce, str) or NONCE_PATTERN.fullmatch(nonce) is None:
             violations.append("request.operation_nonce must be 16-128 safe characters")
         elif consumed_nonces is None:
-            violations.append(
-                "high-risk authorization requires an explicit consumed_nonces set"
-            )
+            violations.append("high-risk authorization requires an explicit consumed_nonces set")
         elif not isinstance(consumed_nonces, (set, frozenset)) or not all(
             isinstance(item, str) for item in consumed_nonces
         ):
             violations.append("consumed_nonces must be a set of strings")
+        elif len(consumed_nonces) > MAX_REPLAY_NONCES:
+            violations.append(f"consumed_nonces must contain at most {MAX_REPLAY_NONCES} items")
         elif nonce in consumed_nonces:
             violations.append("request.operation_nonce has already been consumed")
 
@@ -668,9 +726,7 @@ def authorize(
             try:
                 requested_operation_digest = operation_digest(action, operation)
             except (TypeError, ValueError):
-                violations.append(
-                    "request.operation must contain canonical JSON values"
-                )
+                violations.append("request.operation must contain canonical JSON values")
             else:
                 matching_constraint = any(
                     constraint.get("action") == action
@@ -684,9 +740,7 @@ def authorize(
                         "request operation and nonce do not match an approved constraint"
                     )
     elif "operation" in request or "operation_nonce" in request:
-        violations.append(
-            "operation binding fields are only valid for high-risk actions"
-        )
+        violations.append("operation binding fields are only valid for high-risk actions")
     checks.append("operation_binding")
 
     repository_name = request.get("repository")
@@ -702,16 +756,20 @@ def authorize(
         violations.append(f"repository {repository_name!r} is outside scope")
     else:
         requested_ref = request.get("ref")
-        if not isinstance(requested_ref, str) or not any(
-            _matches_glob(requested_ref, pattern) for pattern in repository["refs"]
+        if isinstance(requested_ref, str) and _is_bounded_text(
+            requested_ref, maximum=MAX_PATTERN_CHARS
         ):
+            ref_allowed = any(
+                _matches_glob(requested_ref, pattern) for pattern in repository["refs"]
+            )
+        else:
+            ref_allowed = False
+        if not ref_allowed:
             violations.append(f"ref {requested_ref!r} is outside scope")
 
         if "path" in request:
             requested_path = request["path"]
-            if not isinstance(requested_path, str) or not _is_safe_relative_path(
-                requested_path
-            ):
+            if not isinstance(requested_path, str) or not _is_safe_relative_path(requested_path):
                 violations.append("request.path must be a safe relative path")
             else:
                 denied = any(
@@ -719,15 +777,12 @@ def authorize(
                     for pattern in repository.get("deny_paths", [])
                 )
                 allowed = any(
-                    _matches_glob(requested_path, pattern)
-                    for pattern in repository["allow_paths"]
+                    _matches_glob(requested_path, pattern) for pattern in repository["allow_paths"]
                 )
                 if denied:
                     violations.append(f"path {requested_path!r} matches a deny rule")
                 elif not allowed:
-                    violations.append(
-                        f"path {requested_path!r} is outside allowed paths"
-                    )
+                    violations.append(f"path {requested_path!r} is outside allowed paths")
     checks.append("repository_ref_path")
 
     limits = contract["limits"]
@@ -741,20 +796,12 @@ def authorize(
         if request_field == "cost_usd":
             valid_number = _is_finite_nonnegative_number(value)
         else:
-            valid_number = (
-                isinstance(value, int) and not isinstance(value, bool) and value >= 0
-            )
+            valid_number = isinstance(value, int) and not isinstance(value, bool) and value >= 0
         if not valid_number:
-            violations.append(
-                f"request.{request_field} must be a finite non-negative number"
-            )
-        elif request_field == "cost_usd" and _as_decimal(value) > _as_decimal(
-            limits[limit_field]
-        ):
-            violations.append(
-                f"request.{request_field}={value} exceeds {limit_field}={limits[limit_field]}"
-            )
-        elif request_field != "cost_usd" and value > limits[limit_field]:
+            violations.append(f"request.{request_field} must be a finite non-negative number")
+        elif (
+            request_field == "cost_usd" and _as_decimal(value) > _as_decimal(limits[limit_field])
+        ) or (request_field != "cost_usd" and value > limits[limit_field]):
             violations.append(
                 f"request.{request_field}={value} exceeds {limit_field}={limits[limit_field]}"
             )
@@ -769,10 +816,12 @@ def authorize(
 
     raw_approvals = request.get("approvals")
     if not isinstance(raw_approvals, list) or not all(
-        isinstance(approval, str) and approval for approval in raw_approvals
+        _is_bounded_text(approval) for approval in raw_approvals
     ):
         violations.append("request.approvals must be a string array")
         supplied_approvals: set[str] = set()
+    elif _too_many_items(raw_approvals, "request.approvals", violations):
+        supplied_approvals = set()
     else:
         if len(raw_approvals) != len(set(raw_approvals)):
             violations.append("request.approvals must not contain duplicates")
@@ -791,8 +840,8 @@ def authorize(
 
 
 def verify_completion(
-    contract: dict[str, Any],
-    report: dict[str, Any],
+    contract: Any,
+    report: Any,
     *,
     now: datetime | None = None,
 ) -> Decision:
@@ -811,6 +860,13 @@ def verify_completion(
         return Decision(False, digest, tuple(violations), tuple(checks))
     if not isinstance(report, dict):
         return Decision(False, digest, ("completion report must be a JSON object",), ())
+    if len(report) > MAX_COLLECTION_ITEMS:
+        return Decision(
+            False,
+            digest,
+            (f"completion report must contain at most {MAX_COLLECTION_ITEMS} fields",),
+            (),
+        )
 
     report_fields = {
         "subject_id",
@@ -822,14 +878,13 @@ def verify_completion(
     _reject_unknown_fields(report, report_fields, "completion report", violations)
     for field in sorted(report_fields - report.keys()):
         violations.append(f"missing required completion field: {field}")
+    for field in ("subject_id", "claim_id"):
+        if field in report and not _is_bounded_text(report[field]):
+            violations.append(f"completion report.{field} must be a bounded non-empty string")
 
     effective_now = _trusted_now(now, violations)
-    not_before = _parse_time(
-        contract["validity"]["not_before"], "validity.not_before", violations
-    )
-    expires_at = _parse_time(
-        contract["validity"]["expires_at"], "validity.expires_at", violations
-    )
+    not_before = _parse_time(contract["validity"]["not_before"], "validity.not_before", violations)
+    expires_at = _parse_time(contract["validity"]["expires_at"], "validity.expires_at", violations)
     if not_before and effective_now is not None and effective_now < not_before:
         violations.append("contract is not active yet")
     if expires_at and effective_now is not None and effective_now >= expires_at:
@@ -853,22 +908,16 @@ def verify_completion(
     }
     for report_field, contract_field in evidence_fields.items():
         supplied = report.get(report_field)
-        if not isinstance(supplied, list) or not all(
-            isinstance(item, str) and item for item in supplied
-        ):
-            violations.append(
-                f"completion report.{report_field} must be a string array"
-            )
+        if not isinstance(supplied, list) or not all(_is_bounded_text(item) for item in supplied):
+            violations.append(f"completion report.{report_field} must be a string array")
             supplied_set: set[str] = set()
+        elif _too_many_items(supplied, f"completion report.{report_field}", violations):
+            supplied_set = set()
         else:
             supplied_set = set(supplied)
             if len(supplied) != len(supplied_set):
-                violations.append(
-                    f"completion report.{report_field} must not contain duplicates"
-                )
-        for missing in sorted(
-            set(contract["validation"][contract_field]) - supplied_set
-        ):
+                violations.append(f"completion report.{report_field} must not contain duplicates")
+        for missing in sorted(set(contract["validation"][contract_field]) - supplied_set):
             violations.append(f"missing {contract_field}: {missing}")
         checks.append(contract_field)
 
@@ -889,18 +938,16 @@ def to_nostr_event_template(
             )
     digest = contract_digest(contract)
     if created_at is None:
-        event_created_at = int(datetime.now(timezone.utc).timestamp())
-    elif (
-        not isinstance(created_at, int)
-        or isinstance(created_at, bool)
-        or created_at < 0
-    ):
+        event_created_at = int(datetime.now(UTC).timestamp())
+    elif not isinstance(created_at, int) or isinstance(created_at, bool) or created_at < 0:
         raise ValueError("created_at must be a non-negative integer")
     else:
         event_created_at = created_at
     return {
         "status": "unsigned_template",
-        "instruction": "Compute the NIP-01 id and signature with the issuer's Nostr key before publishing.",
+        "instruction": (
+            "Compute the NIP-01 id and signature with the issuer's Nostr key before publishing."
+        ),
         "event": {
             "kind": 30078,
             "created_at": event_created_at,

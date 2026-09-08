@@ -1,0 +1,172 @@
+name: Trusted Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the selected signed-off tag after all gates pass.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  authorize-publish:
+    name: Require Jalen's explicit publish dispatch
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Verify the authorized release actor
+        env:
+          REQUESTING_ACTOR: ${{ github.actor }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$REQUESTING_ACTOR" = "JalenBuildsHub"
+
+  quality:
+    name: Maintained-runtime and security gates
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      actions: read
+      contents: read
+
+  codeql:
+    name: CodeQL gate
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  build:
+    name: Build one immutable release candidate
+    needs: [quality, codeql]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Verify tag ancestry and build distributions
+        # Exact build tools are intentional release inputs.
+        # zizmor: ignore[adhoc-packages]
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --upgrade pip==26.2.1
+          python -m pip install --disable-pip-version-check build==1.6.0 twine==7.0.0
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            test "$(git cat-file -t "${GITHUB_REF_NAME}")" = tag
+            git merge-base --is-ancestor "${GITHUB_SHA}" origin/main
+          fi
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          python -m build --outdir release
+          python -m twine check release/*
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            python scripts/verify-release.py release --tag "${GITHUB_REF_NAME}" > release-receipt.json
+          else
+            python scripts/verify-release.py release > release-receipt.json
+          fi
+
+      - name: Upload the immutable release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-distributions-${{ github.sha }}
+          path: |
+            release/
+            release-receipt.json
+          if-no-files-found: error
+          retention-days: 7
+
+  attest:
+    name: Attest the approved immutable candidate
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [build, authorize-publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - name: Download the verified release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-distributions-${{ github.sha }}
+          path: candidate
+
+      - name: Generate build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: candidate/release/*
+
+  publish-pypi:
+    name: Publish PyPI with trusted publishing
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [build, attest, authorize-publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/permitmesh
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download the verified release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-distributions-${{ github.sha }}
+          path: candidate
+
+      - name: Publish the Python distributions
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: candidate/release
+
+  release-github:
+    name: Publish the GitHub release after PyPI
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [build, publish-pypi, authorize-publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Download the verified release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-distributions-${{ github.sha }}
+          path: candidate
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          gh release create "${RELEASE_TAG}" candidate/release/* candidate/release-receipt.json \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes

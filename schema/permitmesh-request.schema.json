@@ -1,8 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/JalenBuildsHub/PermitMesh/v0.2.0/schema/permitmesh-request.schema.json",
+  "$id": "https://raw.githubusercontent.com/nymrel/PermitMesh/v0.2.0/schema/permitmesh-request.schema.json",
   "title": "PermitMesh Action Request 0.2",
   "type": "object",
+  "maxProperties": 256,
   "additionalProperties": false,
   "required": [
     "subject_id",
@@ -17,31 +18,32 @@
     "approvals"
   ],
   "properties": {
-    "subject_id": {"type": "string", "minLength": 1},
+    "subject_id": {"type": "string", "minLength": 1, "maxLength": 65536},
     "action": {
       "enum": ["read", "edit", "shell", "test", "commit", "review", "deploy", "publish", "spend"]
     },
-    "channel": {"type": "string", "minLength": 1},
-    "repository": {"type": "string", "minLength": 1},
-    "ref": {"type": "string", "minLength": 1},
-    "path": {"type": "string", "minLength": 1},
+    "channel": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "repository": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "ref": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "path": {"type": "string", "minLength": 1, "maxLength": 4096},
     "files_changed": {"type": "integer", "minimum": 0},
     "commands_used": {"type": "integer", "minimum": 0},
     "cost_usd": {"type": "number", "minimum": 0},
-    "claim_id": {"type": "string", "minLength": 1},
+    "claim_id": {"type": "string", "minLength": 1, "maxLength": 65536},
     "fencing_generation": {"type": "integer", "minimum": 1},
     "approvals": {
       "type": "array",
+      "maxItems": 256,
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
+      "items": {"type": "string", "minLength": 1, "maxLength": 65536}
     },
     "operation": {
       "type": "object",
       "additionalProperties": false,
       "required": ["tool", "arguments"],
       "properties": {
-        "tool": {"type": "string", "minLength": 1},
-        "arguments": {"type": "object"}
+        "tool": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "arguments": {"type": "object", "maxProperties": 10000}
       }
     },
     "operation_nonce": {

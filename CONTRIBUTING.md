@@ -12,9 +12,14 @@ Before proposing new schema fields, include an example that cannot be represente
 Run:
 
 ```powershell
-$env:PYTHONPATH = "$PWD\src"
-python -m unittest discover -s tests -v
-python -m compileall -q src tests
+python -m pip install --disable-pip-version-check -e ".[dev]"
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy
+python -m coverage run -m pytest
+python -m coverage report
+python -m bandit -q -r src scripts .github\nymrel-hourly -ll -ii
+python -m pip_audit --strict .
 python -m permitmesh conformance examples\conformance-suite.json
 ```
 
@@ -23,3 +28,9 @@ deterministic digests, exact high-risk operation binding, explicit replay
 state, and explicit signed/unsigned states. Do not describe nonce checks as
 one-time enforcement unless the enforcement point atomically consumes the
 nonce with execution.
+
+New external inputs must be bounded by size, depth, count, and string/path
+length before expensive matching or receipt construction. Schema changes must
+ship with runtime-parity and adversarial tests. Workflow changes must preserve
+the read-only reasoning job, immutable guard binding, separate publisher,
+least privilege, full-SHA action pins, and draft-only output.

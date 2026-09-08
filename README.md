@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nymrel/PermitMesh/actions/workflows/ci.yml/badge.svg)](https://github.com/nymrel/PermitMesh/actions/workflows/ci.yml)
 
-**A portable policy-decision profile for AI agents changing software.**
+**Deterministic, fail-closed capability contracts for AI agents changing software.**
 
 > **PDP, not PEP.** PermitMesh evaluates policy. It does not authenticate an
 > issuer, sandbox an agent, intercept tools, or enforce its decisions.
@@ -25,8 +25,9 @@ A PermitMesh contract states:
 
 The reference CLI evaluates proposed actions deterministically and fails closed with a machine-readable explanation.
 
-> Status: **HYPOTHESIS — NOT ADOPTED.** Version 0.2 is a local
-> interoperability experiment, not a security boundary.
+> Status: **HYPOTHESIS — NOT ADOPTED.** Version 0.2 is an unpublished
+> interoperability candidate in a public source repository, not a security
+> boundary or package-release claim.
 
 ## Why this exists
 
@@ -51,7 +52,7 @@ See the candid [prior-art matrix](docs/PRIOR_ART.md).
 
 ## Thirty-second demo
 
-Requires Python 3.11+ and no runtime dependencies.
+Requires Python 3.11-3.14 and no runtime dependencies.
 
 ```powershell
 $env:PYTHONPATH = "$PWD\src"
@@ -111,7 +112,9 @@ root-anchored path and ref glob edges, traversal and non-canonical paths,
 duplicate JSON keys, exact decimal budgets, malformed approvals, stale claims
 and fences, exact high-risk operation binding, replayed operation nonces,
 validity boundaries, unknown fields, non-finite input, and required completion
-evidence.
+evidence. The runner also rejects oversized files, deeply nested JSON,
+unbounded case collections, ambiguous fixture paths, and unknown suite fields
+before they can become an authorization or receipt claim.
 
 ## How it fits
 
@@ -131,6 +134,7 @@ PermitMesh is the policy decision point. The runtime, relay, or tool proxy remai
 ## Commands
 
 ```text
+permitmesh --version
 permitmesh validate <contract>
 permitmesh digest <contract>
 permitmesh authorize <contract> <request> [--evaluation-time RFC3339]
@@ -168,11 +172,14 @@ cross-document and semantic rules JSON Schema cannot express cleanly:
 In v0.2, `shell`, `test`, `commit`, `deploy`, `publish`, and `spend` are
 high-risk capabilities and require that exact operation binding.
 
-The strict loader rejects duplicate object keys and non-standard numeric
-constants, and preserves decimal precision for budget comparisons. The digest
-is SHA-256 over canonical JSON with `signature` and `contract_digest` excluded.
-This digest binds receipts and transport adapters to the effective policy
-document. `permitmesh digest` refuses structurally invalid contracts.
+The strict loader rejects duplicate object keys, non-standard numeric
+constants, oversized files, excessive nesting, and excessive structure while
+preserving decimal precision for budget comparisons. Contract collections,
+path patterns, request fields, completion evidence, and conformance cases have
+explicit deterministic bounds. The digest is SHA-256 over bounded canonical
+JSON with `signature` and `contract_digest` excluded. This digest binds
+receipts and transport adapters to the effective policy document; it does not
+prove authorship. `permitmesh digest` refuses structurally invalid contracts.
 
 ## Buzz/Nostr adapter
 
@@ -196,16 +203,50 @@ The adapter is exploratory. An upstream design conversation should decide whethe
   tool-and-arguments operation, or another worker could reuse the same
   authorization decision.
 - A relay storing a permit does not imply that an execution runtime enforced it.
+- Resource bounds protect the reference process from accidental or adversarial
+  input amplification, but they are not a substitute for process-level memory,
+  CPU, and request-size controls at a production adapter.
 
 See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for the explicit boundary.
 
 ## Development
 
 ```powershell
-$env:PYTHONPATH = "$PWD\src"
-python -m unittest discover -s tests -v
-python -m compileall -q src tests
+python -m pip install --disable-pip-version-check -e ".[dev]"
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy
+python -m coverage run -m pytest
+python -m coverage report
+python -m bandit -q -r src scripts .github\nymrel-hourly -ll -ii
+python -m pip_audit --strict .
+python -m permitmesh conformance examples\conformance-suite.json
 ```
+
+CI exercises maintained Python 3.11-3.14 runtimes on explicit Ubuntu and
+Windows runner generations, enforces branch coverage, scans source and
+workflows, verifies two byte-identical builds, and installs the resulting wheel
+into a clean consumer environment. Tag pushes build candidates only. PyPI and
+GitHub publication require an explicit manual dispatch on the selected tag,
+the `JalenBuildsHub` release actor, the protected `pypi` environment,
+provenance attestation, and every prior gate.
+
+## Guarded maintenance workflow
+
+The reusable Nymrel maintenance worker separates authority into three jobs:
+
+1. a read-only admission job applies draft-PR backpressure;
+2. a read-only Copilot reasoning job can inspect and edit files but has no
+   shell, network, delegation, or GitHub write tools; and
+3. a non-AI publisher independently reapplies the immutable patch guard before
+   it can push one unique branch and open a draft pull request.
+
+The worker pins its runner, Node runtime, npm, Copilot CLI, and third-party
+actions. Its same-repository caller pins both the reusable worker and
+`guard_ref` to one reviewed immutable PermitMesh commit. The worker loads the
+guard from that exact commit, rejects protected paths and receipt-injecting filenames, and never copies the untrusted
+agent transcript into the pull-request receipt. It does not merge, deploy,
+release, publish packages, or bypass maintainer review.
 
 ## What success means
 
@@ -219,9 +260,11 @@ after removing secrets and sensitive workspace details.
 
 ## Project status
 
-PermitMesh is an independent [Nymrel](https://nymrel.com) experiment. Publication is meant to
-test whether the narrow software-change profile is useful. A Buzz design
-discussion remains gated on independent reproduction; publication alone does
-not justify an upstream proposal.
+PermitMesh is an independent [Nymrel](https://nymrel.com) experiment. The
+source repository is public, but the 0.2.0 distribution is not published on
+PyPI and has no GitHub release. External adoption, enforcement quality, and
+false-allow rates remain unproven. A Buzz design discussion and any package
+publication remain gated on independent reproduction and explicit operator
+approval; repository availability alone does not justify an upstream proposal.
 
 Apache-2.0.

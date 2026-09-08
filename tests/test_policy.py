@@ -1,20 +1,26 @@
 from __future__ import annotations
 
-from copy import deepcopy
-from contextlib import redirect_stderr, redirect_stdout
-from datetime import datetime, timezone
-from decimal import Decimal
 import io
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from copy import deepcopy
+from datetime import UTC, datetime
+from decimal import Decimal
+from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from permitmesh.conformance import load_json_file, run_conformance
 from permitmesh.cli import main
+from permitmesh.conformance import (
+    MAX_CONFORMANCE_CASES,
+    MAX_JSON_FILE_BYTES,
+    load_json_file,
+    run_conformance,
+)
 from permitmesh.policy import (
+    MAX_CANONICAL_DEPTH,
     authorize,
     canonical_json,
     contract_digest,
@@ -23,7 +29,6 @@ from permitmesh.policy import (
     validate_contract,
     verify_completion,
 )
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MUTATION_VALUES = [
@@ -46,33 +51,29 @@ def load_example(name: str) -> dict:
     return json.loads((ROOT / "examples" / name).read_text(encoding="utf-8"))
 
 
-def leaf_paths(
-    value: object, path: tuple[object, ...] = ()
-) -> list[tuple[object, ...]]:
+def leaf_paths(value: object, path: tuple[object, ...] = ()) -> list[tuple[object, ...]]:
     paths: list[tuple[object, ...]] = []
     if isinstance(value, dict):
         for key, item in value.items():
-            paths.extend(leaf_paths(item, path + (key,)))
+            paths.extend(leaf_paths(item, (*path, key)))
     elif isinstance(value, list):
         for index, item in enumerate(value):
-            paths.extend(leaf_paths(item, path + (index,)))
+            paths.extend(leaf_paths(item, (*path, index)))
     else:
         paths.append(path)
     return paths
 
 
-def all_child_paths(
-    value: object, path: tuple[object, ...] = ()
-) -> list[tuple[object, ...]]:
+def all_child_paths(value: object, path: tuple[object, ...] = ()) -> list[tuple[object, ...]]:
     paths: list[tuple[object, ...]] = []
     if isinstance(value, dict):
         for key, item in value.items():
-            child = path + (key,)
+            child = (*path, key)
             paths.append(child)
             paths.extend(all_child_paths(item, child))
     elif isinstance(value, list):
         for index, item in enumerate(value):
-            child = path + (index,)
+            child = (*path, index)
             paths.append(child)
             paths.extend(all_child_paths(item, child))
     return paths
@@ -245,9 +246,7 @@ class ContractValidationTests(unittest.TestCase):
             one = Path(directory) / "one.json"
             two = Path(directory) / "two.json"
             one.write_text(
-                json.dumps(self.contract).replace(
-                    '"max_cost_usd": 25', '"max_cost_usd": 25.0'
-                ),
+                json.dumps(self.contract).replace('"max_cost_usd": 25', '"max_cost_usd": 25.0'),
                 encoding="utf-8",
             )
             two.write_text(json.dumps(self.contract), encoding="utf-8")
@@ -263,7 +262,7 @@ class SchemaRuntimeParityTests(unittest.TestCase):
         cls.contract = load_example("contract.valid.json")
         cls.request = load_example("request.allowed.json")
         cls.report = load_example("completion.valid.json")
-        cls.now = datetime(2026, 7, 23, 12, tzinfo=timezone.utc)
+        cls.now = datetime(2026, 7, 23, 12, tzinfo=UTC)
 
     def validator(self, name: str) -> Draft202012Validator:
         schema = json.loads((ROOT / "schema" / name).read_text(encoding="utf-8"))
@@ -276,11 +275,11 @@ class SchemaRuntimeParityTests(unittest.TestCase):
         def collect(value: object, path: tuple[object, ...] = ()) -> None:
             if isinstance(value, dict):
                 for key, item in value.items():
-                    object_paths.append(path + (key,))
-                    collect(item, path + (key,))
+                    object_paths.append((*path, key))
+                    collect(item, (*path, key))
             elif isinstance(value, list):
                 for index, item in enumerate(value):
-                    collect(item, path + (index,))
+                    collect(item, (*path, index))
 
         collect(self.contract)
         for path in object_paths:
@@ -308,9 +307,7 @@ class SchemaRuntimeParityTests(unittest.TestCase):
                     mutated = deepcopy(self.request)
                     replace_path(mutated, path, value)
                     if not validator.is_valid(mutated):
-                        self.assertFalse(
-                            authorize(self.contract, mutated, now=self.now).allowed
-                        )
+                        self.assertFalse(authorize(self.contract, mutated, now=self.now).allowed)
 
     def test_completion_type_mutations_never_false_allow(self) -> None:
         validator = self.validator("permitmesh-completion-report.schema.json")
@@ -333,7 +330,7 @@ class AuthorizationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.contract = load_example("contract.valid.json")
         self.request = load_example("request.allowed.json")
-        self.now = datetime(2026, 7, 23, 12, tzinfo=timezone.utc)
+        self.now = datetime(2026, 7, 23, 12, tzinfo=UTC)
 
     def test_allows_in_scope_action(self) -> None:
         decision = authorize(self.contract, self.request, now=self.now)
@@ -361,19 +358,17 @@ class AuthorizationTests(unittest.TestCase):
         self.assertGreaterEqual(len(decision.violations), 7)
         self.assertTrue(any("approval" in item for item in decision.violations))
         self.assertTrue(any("deny rule" in item for item in decision.violations))
-        self.assertTrue(
-            any("fencing_generation" in item for item in decision.violations)
-        )
+        self.assertTrue(any("fencing_generation" in item for item in decision.violations))
 
     def test_expired_contract_fails_closed(self) -> None:
-        future = datetime(2026, 8, 1, tzinfo=timezone.utc)
+        future = datetime(2026, 8, 1, tzinfo=UTC)
         decision = authorize(self.contract, self.request, now=future)
         self.assertFalse(decision.allowed)
         self.assertIn("contract has expired", decision.violations)
 
     def test_backdated_request_cannot_revive_expired_contract(self) -> None:
         self.request["at"] = "2026-07-23T00:00:00Z"
-        future = datetime(2026, 8, 1, tzinfo=timezone.utc)
+        future = datetime(2026, 8, 1, tzinfo=UTC)
         decision = authorize(self.contract, self.request, now=future)
         self.assertFalse(decision.allowed)
         self.assertIn("contract has expired", decision.violations)
@@ -709,9 +704,7 @@ class AuthorizationTests(unittest.TestCase):
         over_limit["cost_usd"] = Decimal("25.0000000000000000001")
         decision = authorize(self.contract, over_limit, now=self.now)
         self.assertFalse(decision.allowed)
-        self.assertTrue(
-            any("exceeds max_cost_usd" in item for item in decision.violations)
-        )
+        self.assertTrue(any("exceeds max_cost_usd" in item for item in decision.violations))
 
     def test_naive_evaluator_time_fails_closed(self) -> None:
         decision = authorize(
@@ -731,6 +724,49 @@ class AuthorizationTests(unittest.TestCase):
                     request[field] = value
                     decision = authorize(self.contract, request, now=self.now)
                     self.assertIsInstance(decision.allowed, bool)
+
+    def test_deep_operation_fails_closed_without_recursion_escape(self) -> None:
+        self.request["action"] = "shell"
+        self.request["operation_nonce"] = "permitmesh-demo-shell-001"
+        arguments: dict[str, object] = {}
+        for _ in range(MAX_CANONICAL_DEPTH + 2):
+            arguments = {"next": arguments}
+        self.request["operation"] = {"tool": "shell", "arguments": arguments}
+
+        decision = authorize(
+            self.contract,
+            self.request,
+            now=self.now,
+            consumed_nonces=frozenset(),
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "request.operation must contain canonical JSON values",
+            decision.violations,
+        )
+
+    def test_oversized_glob_fails_closed_without_recursion_escape(self) -> None:
+        repository = self.contract["scope"]["repositories"][0]
+        repository["allow_paths"] = ["/".join(["**"] * 1_200)]
+        self.request["path"] = "/".join(["segment"] * 1_200)
+
+        decision = authorize(self.contract, self.request, now=self.now)
+
+        self.assertFalse(decision.allowed)
+        self.assertIn(
+            "scope.repositories[0].allow_paths[0] must be a safe relative path pattern",
+            decision.violations,
+        )
+
+    def test_maximum_bounded_recursive_glob_is_iterative(self) -> None:
+        repository = self.contract["scope"]["repositories"][0]
+        repository["allow_paths"] = ["/".join(["**"] * 128)]
+        self.request["path"] = "/".join(["a"] * 128)
+
+        decision = authorize(self.contract, self.request, now=self.now)
+
+        self.assertTrue(decision.allowed, decision.violations)
 
 
 class NostrAdapterTests(unittest.TestCase):
@@ -759,11 +795,11 @@ class NostrAdapterTests(unittest.TestCase):
     def test_invalid_created_at_is_rejected(self) -> None:
         contract = load_example("contract.valid.json")
         for created_at in (-1, True, 1.5):
-            with self.subTest(created_at=created_at):
-                with self.assertRaisesRegex(
-                    ValueError, "created_at must be a non-negative integer"
-                ):
-                    to_nostr_event_template(contract, created_at=created_at)
+            with (
+                self.subTest(created_at=created_at),
+                self.assertRaisesRegex(ValueError, "created_at must be a non-negative integer"),
+            ):
+                to_nostr_event_template(contract, created_at=created_at)
 
 
 class ConformanceTests(unittest.TestCase):
@@ -779,18 +815,14 @@ class ConformanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "nonfinite.json"
             path.write_text('{"cost": NaN}', encoding="utf-8")
-            with self.assertRaisesRegex(
-                ValueError, "non-standard JSON numeric constant"
-            ):
+            with self.assertRaisesRegex(ValueError, "non-standard JSON numeric constant"):
                 load_json_file(path)
 
     def test_duplicate_json_keys_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "duplicate.json"
             path.write_text('{"action":"edit","action":"deploy"}', encoding="utf-8")
-            with self.assertRaisesRegex(
-                ValueError, "duplicate JSON object key: action"
-            ):
+            with self.assertRaisesRegex(ValueError, "duplicate JSON object key: action"):
                 load_json_file(path)
 
     def test_json_decimals_keep_exact_precision(self) -> None:
@@ -803,12 +835,51 @@ class ConformanceTests(unittest.TestCase):
                 Decimal("25.0000000000000000001"),
             )
 
+    def test_oversized_json_file_is_rejected_before_parsing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "oversized.json"
+            path.write_bytes(b" " * (MAX_JSON_FILE_BYTES + 1))
+            with self.assertRaisesRegex(ValueError, "JSON input exceeds"):
+                load_json_file(path)
+
+    def test_deep_json_is_rejected_as_bounded_input(self) -> None:
+        value: dict[str, object] = {}
+        for _ in range(MAX_CANONICAL_DEPTH + 2):
+            value = {"next": value}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "deep.json"
+            path.write_text(json.dumps(value), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "maximum depth"):
+                load_json_file(path)
+
+    def test_unknown_suite_field_is_rejected(self) -> None:
+        suite = json.loads(
+            (ROOT / "examples" / "conformance-suite.json").read_text(encoding="utf-8")
+        )
+        suite["expected_outcome"] = "allow"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "suite.json"
+            path.write_text(json.dumps(suite), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "unknown fields"):
+                run_conformance(path)
+
+    def test_suite_case_count_is_bounded(self) -> None:
+        suite = json.loads(
+            (ROOT / "examples" / "conformance-suite.json").read_text(encoding="utf-8")
+        )
+        suite["cases"] = [deepcopy(suite["cases"][0])] * (MAX_CONFORMANCE_CASES + 1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "suite.json"
+            path.write_text(json.dumps(suite), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "cases must contain at most"):
+                run_conformance(path)
+
 
 class CompletionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.contract = load_example("contract.valid.json")
         self.report = load_example("completion.valid.json")
-        self.now = datetime(2026, 7, 23, 12, tzinfo=timezone.utc)
+        self.now = datetime(2026, 7, 23, 12, tzinfo=UTC)
 
     def test_all_required_evidence_is_accepted(self) -> None:
         decision = verify_completion(self.contract, self.report, now=self.now)
@@ -818,12 +889,8 @@ class CompletionTests(unittest.TestCase):
         report = load_example("completion.missing.json")
         decision = verify_completion(self.contract, report, now=self.now)
         self.assertFalse(decision.allowed)
-        self.assertTrue(
-            any("missing required_commands" in v for v in decision.violations)
-        )
-        self.assertTrue(
-            any("missing required_artifacts" in v for v in decision.violations)
-        )
+        self.assertTrue(any("missing required_commands" in v for v in decision.violations))
+        self.assertTrue(any("missing required_artifacts" in v for v in decision.violations))
 
     def test_completion_is_bound_to_subject_claim_and_fence(self) -> None:
         self.report["subject_id"] = "different-agent"
@@ -831,12 +898,8 @@ class CompletionTests(unittest.TestCase):
         self.report["fencing_generation"] = 2
         decision = verify_completion(self.contract, self.report, now=self.now)
         self.assertFalse(decision.allowed)
-        self.assertIn(
-            "subject_id does not match the active contract", decision.violations
-        )
-        self.assertIn(
-            "claim_id does not match the active contract", decision.violations
-        )
+        self.assertIn("subject_id does not match the active contract", decision.violations)
+        self.assertIn("claim_id does not match the active contract", decision.violations)
         self.assertIn(
             "fencing_generation does not match the active contract",
             decision.violations,
@@ -868,6 +931,13 @@ class CliTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertEqual(stdout, "")
             self.assertIn("missing required field", stderr)
+
+    def test_version_is_available_without_a_subcommand(self) -> None:
+        stdout = io.StringIO()
+        with redirect_stdout(stdout), self.assertRaises(SystemExit) as raised:
+            main(["--version"])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertEqual(stdout.getvalue().strip(), "permitmesh 0.2.0")
 
     def test_duplicate_json_key_is_malformed_input(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -916,9 +986,7 @@ class CliTests(unittest.TestCase):
     def test_failed_conformance_uses_exit_code_four(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             suite = json.loads(
-                (ROOT / "examples" / "conformance-suite.json").read_text(
-                    encoding="utf-8"
-                )
+                (ROOT / "examples" / "conformance-suite.json").read_text(encoding="utf-8")
             )
             suite["cases"] = [deepcopy(suite["cases"][0])]
             suite["cases"][0]["expected_outcome"] = "deny"

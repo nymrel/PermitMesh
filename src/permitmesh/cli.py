@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from .conformance import load_json_file, run_conformance
 from .policy import (
+    IMPLEMENTATION_VERSION,
     RFC3339_PATTERN,
     authorize,
     contract_digest,
@@ -30,12 +31,12 @@ def _evaluation_time(value: str) -> datetime:
     if RFC3339_PATTERN.fullmatch(value) is None:
         raise argparse.ArgumentTypeError("must be an RFC 3339 timestamp")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise argparse.ArgumentTypeError("must be an RFC 3339 timestamp") from exc
     if parsed.tzinfo is None:
         raise argparse.ArgumentTypeError("must include a timezone")
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,14 +44,17 @@ def build_parser() -> argparse.ArgumentParser:
         prog="permitmesh",
         description="Validate capability contracts and authorize agent actions.",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {IMPLEMENTATION_VERSION}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_parser = subparsers.add_parser("validate", help="Validate one contract.")
     validate_parser.add_argument("contract")
 
-    digest_parser = subparsers.add_parser(
-        "digest", help="Print the canonical contract digest."
-    )
+    digest_parser = subparsers.add_parser("digest", help="Print the canonical contract digest.")
     digest_parser.add_argument("contract")
 
     authorize_parser = subparsers.add_parser(
@@ -108,10 +112,14 @@ def main(argv: list[str] | None = None) -> int:
                 enforcement_boundary=args.enforcement_boundary,
             )
             if args.receipt:
-                Path(args.receipt).write_text(
-                    json.dumps(receipt, indent=2, sort_keys=True) + "\n",
-                    encoding="utf-8",
-                )
+                try:
+                    Path(args.receipt).write_text(
+                        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+                except OSError as exc:
+                    reason = exc.strerror or "filesystem error"
+                    raise ValueError(f"could not write conformance receipt: {reason}") from exc
             _emit(receipt)
             return 0 if receipt["summary"]["failed"] == 0 else 4
 
@@ -157,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
             _emit(to_nostr_event_template(contract, created_at=args.created_at))
             return 0
 
-    except ValueError as exc:
+    except (TypeError, ValueError) as exc:
         print(json.dumps({"error": str(exc)}), file=sys.stderr)
         return 2
     return 1
