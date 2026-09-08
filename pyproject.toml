@@ -26,7 +26,7 @@ test = [
   "bandit>=1.8,<2",
   "build>=1.2,<2",
   "jsonschema[format]>=4.23,<5",
-  "mypy>=1.19,<2",
+  "mypy>=1.19,<3",
   "ruff>=0.14,<1",
 ]
 
