@@ -60,19 +60,20 @@ jobs:
           retention-days: 7
 
   compatibility:
-    name: Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    name: ${{ matrix.check-name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, python-version: '3.11' }
-          - { os: ubuntu-24.04, python-version: '3.12' }
-          - { os: ubuntu-24.04, python-version: '3.13' }
-          - { os: ubuntu-24.04, python-version: '3.14' }
-          - { os: windows-2025, python-version: '3.11' }
-          - { os: windows-2025, python-version: '3.14' }
+          - { os: ubuntu-24.04, python-version: '3.11', check-name: 'test (ubuntu-latest, py3.11)' }
+          - { os: ubuntu-24.04, python-version: '3.12', check-name: 'test (ubuntu-latest, py3.12)' }
+          - { os: ubuntu-24.04, python-version: '3.13', check-name: 'test (ubuntu-latest, py3.13)' }
+          - { os: ubuntu-24.04, python-version: '3.14', check-name: 'test (ubuntu-latest, py3.14)' }
+          - { os: windows-2025, python-version: '3.11', check-name: 'test (windows-latest, py3.11)' }
+          - { os: windows-2025, python-version: '3.13', check-name: 'test (windows-latest, py3.13)' }
+          - { os: windows-2025, python-version: '3.14', check-name: 'test (windows-latest, py3.14)' }
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
