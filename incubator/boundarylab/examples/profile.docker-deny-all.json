@@ -1,0 +1,55 @@
+{
+  "description": "Assert selected controls applied by the built-in hardened Docker adapter. Network execution remains disabled unless separately authorized and opted in.",
+  "expectations": {
+    "credentials.canary_env": {
+      "op": "equals",
+      "value": false
+    },
+    "credentials.canary_file": {
+      "op": "equals",
+      "value": false
+    },
+    "filesystem.containerd_socket": {
+      "op": "equals",
+      "value": false
+    },
+    "filesystem.docker_socket": {
+      "op": "equals",
+      "value": false
+    },
+    "isolation.capabilities": {
+      "op": "equals",
+      "value": "0000000000000000"
+    },
+    "isolation.no_new_privs": {
+      "op": "equals",
+      "value": "1"
+    }
+  },
+  "probes": [
+    "runtime.platform",
+    "runtime.kernel",
+    "runtime.python",
+    "compute.cpu_count",
+    "compute.memory_limit",
+    "compute.process_limit",
+    "filesystem.docker_socket",
+    "filesystem.containerd_socket",
+    "isolation.uid",
+    "isolation.pid1",
+    "isolation.process_count",
+    "isolation.mount_namespace",
+    "isolation.pid_namespace",
+    "isolation.cgroup",
+    "isolation.seccomp",
+    "isolation.no_new_privs",
+    "isolation.capabilities",
+    "isolation.devices",
+    "credentials.canary_env",
+    "credentials.canary_file",
+    "credentials.shell_history",
+    "network.resolver"
+  ],
+  "profile_id": "docker-deny-all-v1",
+  "schema": "nymrel.boundarylab.profile.v1"
+}

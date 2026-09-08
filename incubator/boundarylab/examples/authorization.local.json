@@ -1,0 +1,23 @@
+{
+  "adapter_config": {
+    "docker_image": "python:3.13-slim"
+  },
+  "allowed_adapters": [
+    "local",
+    "docker"
+  ],
+  "authorization_id": "local-boundarylab-example",
+  "destructive_tests": false,
+  "environment": "local",
+  "expires_at": "2030-01-01T00:00:00Z",
+  "limits": {
+    "max_cost_usd": "0",
+    "max_duration_seconds": 120,
+    "max_output_bytes": 262144,
+    "max_parallel": 1
+  },
+  "network_targets": [],
+  "owner": "replace-with-environment-owner",
+  "schema": "nymrel.boundarylab.authorization.v1",
+  "third_party_testing": false
+}

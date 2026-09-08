@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "permitmesh",
+  "name": "PermitMesh",
+  "canonicalUrl": "https://github.com/nymrel/PermitMesh",
+  "repository": "nymrel/PermitMesh",
+  "lifecycleStatus": "prototype",
+  "audiences": [
+    "AI-agent platform builders defining software-change authorization boundaries",
+    "Maintainers evaluating deterministic policy decisions for agent actions",
+    "Security and infrastructure teams testing portable agent-work contracts"
+  ],
+  "problems": [
+    "Agent identity alone does not define which repository, path, action, budget, or time window is authorized",
+    "High-risk agent operations need exact tool, argument, approval, claim, and replay boundaries",
+    "Teams need reproducible conformance cases rather than policy claims that cannot be tested"
+  ],
+  "offers": [
+    {
+      "id": "open-source-profile",
+      "name": "PermitMesh policy profile and conformance suite",
+      "kind": "free-tool",
+      "availability": "active",
+      "cta": {
+        "label": "Review PermitMesh",
+        "url": "https://github.com/nymrel/PermitMesh",
+        "intent": "try"
+      }
+    }
+  ],
+  "primaryCta": {
+    "label": "Run the conformance suite",
+    "url": "https://github.com/nymrel/PermitMesh",
+    "intent": "try"
+  },
+  "claims": [
+    {
+      "id": "portable-policy-profile",
+      "status": "verified",
+      "internalStatement": "PermitMesh is a transport-neutral, experimental policy-decision profile for AI agents changing software.",
+      "publicWording": "Evaluate software-change permissions through a portable, transport-neutral policy profile.",
+      "evidence": [
+        {
+          "type": "repository",
+          "ref": "JalenBuildsHub/PermitMesh:README.md"
+        }
+      ]
+    },
+    {
+      "id": "deterministic-fail-closed-evaluator",
+      "status": "verified",
+      "internalStatement": "The reference CLI evaluates proposed actions deterministically and fails closed with machine-readable violations.",
+      "publicWording": "Evaluate proposed agent actions deterministically and receive machine-readable allow or deny reasons.",
+      "evidence": [
+        {
+          "type": "repository",
+          "ref": "JalenBuildsHub/PermitMesh:README.md"
+        },
+        {
+          "type": "test",
+          "ref": "JalenBuildsHub/PermitMesh:python -m unittest discover -s tests -v"
+        }
+      ]
+    },
+    {
+      "id": "adversarial-conformance-suite",
+      "status": "verified",
+      "internalStatement": "PermitMesh includes a reproducible adversarial conformance suite covering identity, scope, path, budget, approval, claim, fencing, nonce, and completion-evidence edges.",
+      "publicWording": "Test policy behavior against a reproducible adversarial conformance suite covering scope, budgets, approvals, replay, and completion evidence.",
+      "evidence": [
+        {
+          "type": "repository",
+          "ref": "nymrel/PermitMesh:examples/conformance-suite.json"
+        }
+      ]
+    }
+  ],
+  "contentPillars": [
+    "Agent authorization and least privilege",
+    "Software-change permits and exact operation binding",
+    "Replay resistance and fencing",
+    "Adversarial conformance testing",
+    "Policy decision versus enforcement boundaries"
+  ],
+  "approvedChannels": [
+    "blog",
+    "github",
+    "linkedin",
+    "x",
+    "reddit",
+    "youtube"
+  ],
+  "agentCapabilities": [
+    "read-product-context",
+    "draft-campaign",
+    "draft-copy",
+    "propose-schedule",
+    "read-analytics",
+    "propose-experiment"
+  ],
+  "prohibitedClaims": [
+    "Claims that PermitMesh authenticates agents, sandboxes tools, verifies signatures, or enforces its own decisions",
+    "Claims that PermitMesh is an adopted standard, security certification, or production security boundary",
+    "Claims of guaranteed prompt-injection prevention, zero false allows, or compatibility not demonstrated by evidence"
+  ],
+  "attributionNamespace": "permitmesh",
+  "supportLevel": "self-serve",
+  "owner": {
+    "team": "Nymrel Studio — PermitMesh",
+    "reviewCadenceDays": 30,
+    "lastReviewedAt": "2026-09-08T13:30:00Z"
+  }
+}
