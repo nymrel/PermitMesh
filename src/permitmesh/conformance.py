@@ -1,22 +1,46 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from decimal import Decimal
 import hashlib
 import json
+from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from .policy import (
     IMPLEMENTATION_VERSION,
+    MAX_COLLECTION_ITEMS,
+    MAX_PATH_CHARS,
     RFC3339_PATTERN,
     authorize,
     canonical_json,
     verify_completion,
 )
 
-
 SUPPORTED_SUITE_VERSION = "0.2"
+MAX_JSON_FILE_BYTES = 1_048_576
+MAX_CONFORMANCE_CASES = 256
+MAX_EXPECTED_FRAGMENTS = 32
+MAX_CASE_ID_CHARS = 128
+MAX_ENFORCEMENT_BOUNDARY_CHARS = 512
+SUITE_FIELDS = {"suite_version", "name", "cases"}
+CASE_FIELDS = {
+    "id",
+    "contract",
+    "request",
+    "evaluation_time",
+    "expected_outcome",
+    "expected_violations_contain",
+    "operation",
+    "consumed_nonces",
+}
+REQUIRED_CASE_FIELDS = {
+    "id",
+    "contract",
+    "request",
+    "evaluation_time",
+    "expected_outcome",
+}
 
 
 def _reject_nonfinite(value: str) -> None:
@@ -35,26 +59,41 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def load_json_file(path: str | Path) -> Any:
     source = Path(path)
     try:
-        return json.loads(
-            source.read_text(encoding="utf-8"),
+        payload = source.read_bytes()
+    except OSError as exc:
+        reason = exc.strerror or "filesystem error"
+        raise ValueError(f"could not read {source.name!r}: {reason}") from exc
+    if len(payload) > MAX_JSON_FILE_BYTES:
+        raise ValueError(
+            f"could not read {source.name!r}: JSON input exceeds {MAX_JSON_FILE_BYTES} bytes"
+        )
+    try:
+        value = json.loads(
+            payload.decode("utf-8"),
             parse_constant=_reject_nonfinite,
             parse_float=Decimal,
             object_pairs_hook=_reject_duplicate_keys,
         )
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        raise ValueError(f"could not read {str(source)!r}: {exc}") from exc
+        canonical_json(value)
+    except (json.JSONDecodeError, RecursionError, UnicodeError, ValueError) as exc:
+        raise ValueError(f"could not read {source.name!r}: {exc}") from exc
+    return value
 
 
 def _fixture_path(suite_dir: Path, relative_path: Any) -> Path:
-    if not isinstance(relative_path, str) or not relative_path:
+    if (
+        not isinstance(relative_path, str)
+        or not relative_path
+        or len(relative_path) > MAX_PATH_CHARS
+        or "\x00" in relative_path
+        or any(ord(character) < 32 or ord(character) == 127 for character in relative_path)
+    ):
         raise ValueError("fixture path must be a non-empty string")
     candidate = (suite_dir / relative_path).resolve()
     try:
         candidate.relative_to(suite_dir.resolve())
     except ValueError as exc:
-        raise ValueError(
-            f"fixture path escapes suite directory: {relative_path!r}"
-        ) from exc
+        raise ValueError(f"fixture path escapes suite directory: {relative_path!r}") from exc
     return candidate
 
 
@@ -63,12 +102,12 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
         try:
             contract = load_json_file(_fixture_path(suite_dir, case.get("contract")))
         except ValueError as exc:
-            detail = str(exc).split(": ", 1)[-1]
+            detail = str(exc)
             raise ValueError(f"contract fixture malformed: {detail}") from exc
         try:
             request = load_json_file(_fixture_path(suite_dir, case.get("request")))
         except ValueError as exc:
-            detail = str(exc).split(": ", 1)[-1]
+            detail = str(exc)
             raise ValueError(f"request fixture malformed: {detail}") from exc
         evaluation_time = case.get("evaluation_time")
         if (
@@ -77,7 +116,7 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
         ):
             raise ValueError("evaluation_time must be an RFC 3339 string")
         try:
-            now = datetime.fromisoformat(evaluation_time.replace("Z", "+00:00"))
+            now = datetime.fromisoformat(evaluation_time)
         except ValueError as exc:
             raise ValueError("evaluation_time must be an RFC 3339 string") from exc
         if now.tzinfo is None:
@@ -93,10 +132,14 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
                 or len(consumed_nonces) != len(set(consumed_nonces))
             ):
                 raise ValueError("consumed_nonces must be a unique string array")
+            if isinstance(consumed_nonces, list) and len(consumed_nonces) > MAX_COLLECTION_ITEMS:
+                raise ValueError(
+                    f"consumed_nonces must contain at most {MAX_COLLECTION_ITEMS} items"
+                )
             decision = authorize(
                 contract,
                 request,
-                now=now.astimezone(timezone.utc),
+                now=now.astimezone(UTC),
                 consumed_nonces=(
                     frozenset(consumed_nonces) if consumed_nonces is not None else None
                 ),
@@ -105,13 +148,11 @@ def _outcome_for(case: dict[str, Any], suite_dir: Path) -> tuple[str, dict[str, 
             decision = verify_completion(
                 contract,
                 request,
-                now=now.astimezone(timezone.utc),
+                now=now.astimezone(UTC),
             )
         else:
             raise ValueError(f"unsupported conformance operation: {operation!r}")
-        return ("allow" if decision.allowed else "deny"), {
-            "decision": decision.to_dict()
-        }
+        return ("allow" if decision.allowed else "deny"), {"decision": decision.to_dict()}
     except ValueError as exc:
         return "malformed", {"error": str(exc)}
 
@@ -125,12 +166,33 @@ def run_conformance(
     suite = load_json_file(source)
     if not isinstance(suite, dict):
         raise ValueError("conformance suite must be a JSON object")
+    unknown_suite_fields = sorted(suite.keys() - SUITE_FIELDS, key=str)
+    if unknown_suite_fields:
+        raise ValueError(
+            "conformance suite contains unknown fields: "
+            + ", ".join(str(field) for field in unknown_suite_fields)
+        )
     if suite.get("suite_version") != SUPPORTED_SUITE_VERSION:
         raise ValueError(f"suite_version must be {SUPPORTED_SUITE_VERSION!r}")
+    suite_name = suite.get("name", source.name)
+    if (
+        not isinstance(suite_name, str)
+        or not suite_name.strip()
+        or len(suite_name) > MAX_CASE_ID_CHARS
+        or any(ord(character) < 32 or ord(character) == 127 for character in suite_name)
+    ):
+        raise ValueError("conformance suite name must be a bounded non-empty string")
     cases = suite.get("cases")
     if not isinstance(cases, list) or not cases:
         raise ValueError("cases must be a non-empty array")
-    if not isinstance(enforcement_boundary, str) or not enforcement_boundary.strip():
+    if len(cases) > MAX_CONFORMANCE_CASES:
+        raise ValueError(f"cases must contain at most {MAX_CONFORMANCE_CASES} items")
+    if (
+        not isinstance(enforcement_boundary, str)
+        or not enforcement_boundary.strip()
+        or len(enforcement_boundary) > MAX_ENFORCEMENT_BOUNDARY_CHARS
+        or any(ord(character) < 32 or ord(character) == 127 for character in enforcement_boundary)
+    ):
         raise ValueError("enforcement_boundary must be a non-empty string")
 
     seen_ids: set[str] = set()
@@ -138,25 +200,46 @@ def run_conformance(
     for index, raw_case in enumerate(cases):
         if not isinstance(raw_case, dict):
             raise ValueError(f"cases[{index}] must be an object")
+        unknown_case_fields = sorted(raw_case.keys() - CASE_FIELDS, key=str)
+        if unknown_case_fields:
+            raise ValueError(
+                f"cases[{index}] contains unknown fields: "
+                + ", ".join(str(field) for field in unknown_case_fields)
+            )
+        missing_case_fields = sorted(REQUIRED_CASE_FIELDS - raw_case.keys())
+        if missing_case_fields:
+            raise ValueError(
+                f"cases[{index}] is missing required fields: " + ", ".join(missing_case_fields)
+            )
         case_id = raw_case.get("id")
         expected = raw_case.get("expected_outcome")
-        if not isinstance(case_id, str) or not case_id:
+        if (
+            not isinstance(case_id, str)
+            or not case_id.strip()
+            or len(case_id) > MAX_CASE_ID_CHARS
+            or any(ord(character) < 32 or ord(character) == 127 for character in case_id)
+        ):
             raise ValueError(f"cases[{index}].id must be a non-empty string")
         if case_id in seen_ids:
             raise ValueError(f"duplicate case id: {case_id}")
         seen_ids.add(case_id)
         if expected not in {"allow", "deny", "malformed"}:
-            raise ValueError(
-                f"cases[{index}].expected_outcome must be allow, deny, or malformed"
-            )
+            raise ValueError(f"cases[{index}].expected_outcome must be allow, deny, or malformed")
 
         observed, details = _outcome_for(raw_case, source.parent)
         required_fragments = raw_case.get("expected_violations_contain", [])
         if not isinstance(required_fragments, list) or not all(
             isinstance(fragment, str) and fragment for fragment in required_fragments
         ):
+            raise ValueError(f"cases[{index}].expected_violations_contain must be a string array")
+        if len(required_fragments) > MAX_EXPECTED_FRAGMENTS:
             raise ValueError(
-                f"cases[{index}].expected_violations_contain must be a string array"
+                f"cases[{index}].expected_violations_contain must contain at most "
+                f"{MAX_EXPECTED_FRAGMENTS} items"
+            )
+        if len(required_fragments) != len(set(required_fragments)):
+            raise ValueError(
+                f"cases[{index}].expected_violations_contain must not contain duplicates"
             )
         observed_violations = details.get("decision", {}).get("violations", [])
         fragments_found = all(
@@ -180,11 +263,11 @@ def run_conformance(
         "receipt_version": "0.2",
         "implementation": {"name": "permitmesh", "version": IMPLEMENTATION_VERSION},
         "suite": {
-            "name": suite.get("name", source.name),
+            "name": suite_name,
             "version": suite["suite_version"],
             "digest": suite_digest,
         },
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "enforcement_boundary": enforcement_boundary.strip(),
         "summary": {
             "total": len(results),

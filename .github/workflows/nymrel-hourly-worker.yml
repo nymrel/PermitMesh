@@ -9,41 +9,37 @@ on:
         type: boolean
         default: false
       guard_ref:
-        description: Immutable PermitMesh commit containing the patch guard.
+        description: Immutable PermitMesh commit containing the reviewed patch guard.
         required: true
         type: string
+
+permissions: {}
 
 concurrency:
   group: nymrel-hourly-open-source-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
-  propose:
-    name: Propose bounded maintenance
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  admit:
+    name: Apply draft-PR backpressure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read
-      issues: read
       pull-requests: read
-      copilot-requests: write
     outputs:
-      has_changes: ${{ steps.guard.outputs.has_changes }}
+      backlog_count: ${{ steps.backlog.outputs.count }}
     steps:
-      - name: Check out default branch without write credentials
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Apply open-PR backpressure
+      - name: Count prior Nymrel maintenance proposals
         id: backlog
         env:
+          GH_REPO: ${{ github.repository }}
+          CANARY_MODE: ${{ inputs.canary_mode }}
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ inputs.canary_mode }}" = "true" ]; then
+          if [ "${CANARY_MODE}" = "true" ]; then
             count=0
           else
             count="$(
@@ -56,26 +52,56 @@ jobs:
           fi
           echo "count=$count" >> "$GITHUB_OUTPUT"
           if [ "$count" -gt 0 ]; then
-            echo "A prior Nymrel hourly draft PR is still open; skipping this repository."
+            echo "A prior Nymrel maintenance draft is still open; skipping this repository."
           fi
 
-      - name: Install Copilot CLI
-        if: steps.backlog.outputs.count == '0'
-        run: npm install -g @github/copilot
+  propose:
+    name: Propose bounded maintenance
+    needs: admit
+    if: needs.admit.outputs.backlog_count == '0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      copilot-requests: write
+    outputs:
+      has_changes: ${{ steps.guard.outputs.has_changes }}
+    steps:
+      - name: Check out default branch without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up maintained Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.20.0'
+
+      - name: Install the exact reviewed Copilot CLI
+        # Exact CLI tools are intentional automation inputs.
+        # zizmor: ignore[adhoc-packages]
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts npm@11.19.1
+          npm install --global --ignore-scripts @github/copilot@1.0.82
+          copilot --version | grep -Fq '1.0.82'
 
       - name: Disable git push from the proposing job
-        if: steps.backlog.outputs.count == '0'
         shell: bash
         run: git remote set-url --push origin DISABLED
 
       - name: Run one bounded maintenance turn
-        if: steps.backlog.outputs.count == '0'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          CANARY_MODE: ${{ inputs.canary_mode }}
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          COPILOT_HOME: ${{ runner.temp }}/copilot-home
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ inputs.canary_mode }}" = "true" ]; then
+          mkdir -p "${COPILOT_HOME}"
+          if [ "${CANARY_MODE}" = "true" ]; then
             cat > "$RUNNER_TEMP/nymrel-hourly-prompt.md" <<'PROMPT'
           This is a Nymrel GitHub Actions activation canary.
           Return exactly `NYMREL_CANARY_OK` with no additional text.
@@ -107,20 +133,33 @@ jobs:
           1. Inspect the current repository state, README/contributor guidance, relevant source, and tests.
           2. Select one small slice only when the expected improvement is clear from repository evidence.
           3. Make the smallest coherent patch.
-          4. Run focused repository-native validation that is safe and available.
-          5. Re-read the diff for correctness, scope, and public-repository safety.
+          4. Do not execute shell commands, package scripts, tests, network requests, or repository code in this reasoning job; deterministic guards and maintainer review validate the proposal later.
+          5. Re-read every changed file for correctness, scope, and public-repository safety.
           6. When no safe high-confidence slice exists, leave the worktree unchanged and finish cleanly.
 
-          End with a concise summary of the evidence, files changed, validation run, and remaining uncertainty. Do not manufacture work.
+          End with a concise summary of the evidence, files changed, and remaining uncertainty. Do not manufacture work.
           PROMPT
           fi
 
-          timeout --signal=TERM 20m \
-            copilot --yolo -p "$(cat "$RUNNER_TEMP/nymrel-hourly-prompt.md")" \
-            2>&1 | tee "$RUNNER_TEMP/agent-output.txt"
+          set +e
+          (
+            ulimit -f 8192
+            timeout --signal=TERM 20m \
+              copilot --silent --no-ask-user \
+                --available-tools='create,edit,view,grep,glob' \
+                --allow-tool='read,write' \
+                --secret-env-vars=COPILOT_GITHUB_TOKEN \
+                -p "$(< "$RUNNER_TEMP/nymrel-hourly-prompt.md")"
+          ) > "$RUNNER_TEMP/agent-output.txt" 2>&1
+          agent_status=$?
+          set -e
+          if [ "$agent_status" -ne 0 ]; then
+            echo "Copilot CLI exited with status $agent_status; output is intentionally not echoed." >&2
+            exit "$agent_status"
+          fi
 
       - name: Verify activation canary
-        if: steps.backlog.outputs.count == '0' && inputs.canary_mode
+        if: inputs.canary_mode
         shell: bash
         run: |
           set -euo pipefail
@@ -132,8 +171,10 @@ jobs:
           fi
 
       - name: Guard and package the local patch
-        if: steps.backlog.outputs.count == '0'
         id: guard
+        env:
+          CONTROL_REPOSITORY: nymrel/PermitMesh
+          CONTROL_SHA: ${{ inputs.guard_ref }}
         shell: bash
         run: |
           set -euo pipefail
@@ -141,24 +182,19 @@ jobs:
           rm -rf "$proposal_dir"
           mkdir -p "$proposal_dir"
 
-          guard_ref="${{ inputs.guard_ref }}"
-          if ! [[ "$guard_ref" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "guard_ref must be a 40-character commit SHA" >&2
+          if ! [[ "$CONTROL_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "guard_ref must be a full immutable commit SHA" >&2
             exit 1
           fi
 
-          curl --fail --silent --show-error --location \
-            "https://raw.githubusercontent.com/nymrel/PermitMesh/${guard_ref}/.github/nymrel-hourly/nymrel_patch_guard.py" \
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            "https://raw.githubusercontent.com/${CONTROL_REPOSITORY}/${CONTROL_SHA}/.github/nymrel-hourly/nymrel_patch_guard.py" \
             -o "$RUNNER_TEMP/nymrel_patch_guard.py"
 
           python "$RUNNER_TEMP/nymrel_patch_guard.py" \
             --mode worktree \
             --output-dir "$proposal_dir" \
             --github-output "$GITHUB_OUTPUT"
-
-          if [ -f "$proposal_dir/changes.patch" ]; then
-            cp "$RUNNER_TEMP/agent-output.txt" "$proposal_dir/agent-output.txt"
-          fi
 
       - name: Upload guarded proposal
         if: steps.guard.outputs.has_changes == 'true'
@@ -168,7 +204,6 @@ jobs:
           path: |
             ${{ runner.temp }}/proposal/changes.patch
             ${{ runner.temp }}/proposal/change-summary.md
-            ${{ runner.temp }}/proposal/agent-output.txt
           if-no-files-found: error
           retention-days: 3
 
@@ -176,7 +211,7 @@ jobs:
     name: Publish guarded draft PR
     needs: propose
     if: needs.propose.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       actions: read
@@ -216,20 +251,22 @@ jobs:
 
       - name: Apply and independently revalidate patch
         if: steps.backlog.outputs.count == '0'
+        env:
+          CONTROL_REPOSITORY: nymrel/PermitMesh
+          CONTROL_SHA: ${{ inputs.guard_ref }}
         shell: bash
         run: |
           set -euo pipefail
           git apply --index --whitespace=error proposal/changes.patch
           git diff --cached --check
 
-          guard_ref="${{ inputs.guard_ref }}"
-          if ! [[ "$guard_ref" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "guard_ref must be a 40-character commit SHA" >&2
+          if ! [[ "$CONTROL_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "guard_ref must be a full immutable commit SHA" >&2
             exit 1
           fi
 
-          curl --fail --silent --show-error --location \
-            "https://raw.githubusercontent.com/nymrel/PermitMesh/${guard_ref}/.github/nymrel-hourly/nymrel_patch_guard.py" \
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            "https://raw.githubusercontent.com/${CONTROL_REPOSITORY}/${CONTROL_SHA}/.github/nymrel-hourly/nymrel_patch_guard.py" \
             -o "$RUNNER_TEMP/nymrel_patch_guard.py"
 
           python "$RUNNER_TEMP/nymrel_patch_guard.py" --mode index
@@ -251,6 +288,7 @@ jobs:
       - name: Open draft pull request
         if: steps.backlog.outputs.count == '0'
         env:
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
@@ -269,18 +307,14 @@ jobs:
           EOF
             cat proposal/change-summary.md
             echo
-            echo "### Agent execution excerpt"
-            echo
-            echo '```text'
-            sed -n '1,120p' proposal/agent-output.txt
-            echo '```'
+            echo "The untrusted agent transcript is intentionally excluded from this receipt."
             echo
             echo "_Control plane: JalenBuildsHub/portfolio-control#48_"
           } > proposal/pr-body.md
 
           if ! gh pr create \
             --draft \
-            --base "${{ github.event.repository.default_branch }}" \
+            --base "$BASE_BRANCH" \
             --head "${{ steps.branch.outputs.name }}" \
             --title "chore: guarded hourly maintenance proposal" \
             --body-file proposal/pr-body.md; then
@@ -291,10 +325,11 @@ jobs:
   report-canary:
     name: Report activation canary
     needs:
+      - admit
       - propose
       - publish
     if: always() && inputs.canary_mode
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read

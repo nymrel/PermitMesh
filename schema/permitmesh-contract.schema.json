@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/JalenBuildsHub/PermitMesh/v0.2.0/schema/permitmesh-contract.schema.json",
+  "$id": "https://raw.githubusercontent.com/nymrel/PermitMesh/v0.2.0/schema/permitmesh-contract.schema.json",
   "title": "PermitMesh Capability Contract 0.2",
   "type": "object",
   "additionalProperties": false,
@@ -29,42 +29,48 @@
         "repositories": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 256,
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": ["name", "refs", "allow_paths", "deny_paths"],
             "properties": {
-              "name": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1, "maxLength": 65536},
               "refs": {
                 "type": "array",
                 "minItems": 1,
+                "maxItems": 128,
                 "uniqueItems": true,
-                "items": {"type": "string", "minLength": 1}
+                "items": {"type": "string", "minLength": 1, "maxLength": 1024}
               },
               "allow_paths": {
                 "type": "array",
                 "minItems": 1,
+                "maxItems": 128,
                 "uniqueItems": true,
-                "items": {"type": "string", "minLength": 1}
+                "items": {"type": "string", "minLength": 1, "maxLength": 1024}
               },
               "deny_paths": {
                 "type": "array",
+                "maxItems": 128,
                 "uniqueItems": true,
-                "items": {"type": "string", "minLength": 1}
+                "items": {"type": "string", "minLength": 1, "maxLength": 1024}
               }
             }
           }
         },
         "channels": {
           "type": "array",
+          "maxItems": 256,
           "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1}
+          "items": {"type": "string", "minLength": 1, "maxLength": 65536}
         }
       }
     },
     "capabilities": {
       "type": "array",
       "minItems": 1,
+      "maxItems": 256,
       "uniqueItems": true,
       "items": {
         "enum": ["read", "edit", "shell", "test", "commit", "review", "deploy", "publish", "spend"]
@@ -91,6 +97,7 @@
     },
     "approval_gates": {
       "type": "array",
+      "maxItems": 256,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -99,6 +106,7 @@
           "actions": {
             "type": "array",
             "minItems": 1,
+            "maxItems": 256,
             "uniqueItems": true,
             "items": {
               "enum": ["read", "edit", "shell", "test", "commit", "review", "deploy", "publish", "spend"]
@@ -108,14 +116,16 @@
           "approvers": {
             "type": "array",
             "minItems": 1,
+            "maxItems": 256,
             "uniqueItems": true,
-            "items": {"type": "string", "minLength": 1}
+            "items": {"type": "string", "minLength": 1, "maxLength": 65536}
           }
         }
       }
     },
     "operation_constraints": {
       "type": "array",
+      "maxItems": 256,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -140,7 +150,7 @@
       "additionalProperties": false,
       "required": ["claim_id", "fencing_generation"],
       "properties": {
-        "claim_id": {"type": "string", "minLength": 1},
+        "claim_id": {"type": "string", "minLength": 1, "maxLength": 65536},
         "fencing_generation": {"type": "integer", "minimum": 1}
       }
     },
@@ -151,13 +161,15 @@
       "properties": {
         "required_commands": {
           "type": "array",
+          "maxItems": 256,
           "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1}
+          "items": {"type": "string", "minLength": 1, "maxLength": 65536}
         },
         "required_artifacts": {
           "type": "array",
+          "maxItems": 256,
           "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1}
+          "items": {"type": "string", "minLength": 1, "maxLength": 65536}
         }
       }
     },
@@ -167,9 +179,9 @@
       "additionalProperties": false,
       "required": ["algorithm", "public_key", "value"],
       "properties": {
-        "algorithm": {"type": "string", "minLength": 1},
-        "public_key": {"type": "string", "minLength": 1},
-        "value": {"type": "string", "minLength": 1}
+        "algorithm": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "public_key": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "value": {"type": "string", "minLength": 1, "maxLength": 65536}
       }
     }
   },
@@ -179,8 +191,8 @@
       "additionalProperties": false,
       "required": ["id"],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "display_name": {"type": "string"}
+        "id": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "display_name": {"type": "string", "maxLength": 65536}
       }
     }
   }

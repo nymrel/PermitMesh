@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-08T15:03:00Z",
+  "task_id": "PERMITMESH-PR14-HARDENING-INTEGRATION-20260908",
+  "claim_id": "codex-permitmesh-pr14-hardening-integration-20260908",
+  "repository": "nymrel/PermitMesh",
+  "branch": "codex/permitmesh-pr14-hardening-integration-20260908",
+  "target_base": "cce9bb10229cc8e751168e595977f227979644d7",
+  "target_base_description": "merged PR18 core and BoundaryLab",
+  "historical_pr": 14,
+  "historical_base": "7e9da5cea9ffcbd8a6f4933d0dd38960de6b3637",
+  "historical_hardening_head": "27a996c03a63a487d0f282513ba2f9f57bbaba16",
+  "historical_caller_followup": "f0a31f97d17b0f787953c7e28f6e7eadef45941e",
+  "integration": {
+    "historical_hardening_paths": 26,
+    "caller_followup_paths": 1,
+    "changed_source_paths": 27,
+    "receipt_paths": 1,
+    "preserved_current_work": [
+      "PR18 PermitMesh core",
+      "PR18 BoundaryLab incubator"
+    ],
+    "adaptations": [
+      "resolved the pyproject build and toolchain contract against current main",
+      "pinned the scheduled caller and guard to the reviewed historical hardening commit",
+      "added portable path and credential-family defenses plus real-repository patch-guard tests",
+      "required explicit JalenBuildsHub manual dispatch before any package publication",
+      "moved repeated CI distributions outside the checkout so the second sdist cannot ingest the first"
+    ]
+  },
+  "validation": {
+    "permitmesh_tests": "111 passed",
+    "branch_coverage": "95 percent",
+    "conformance": "27 of 27 passed",
+    "ruff": "format and lint passed",
+    "mypy": "strict project check passed",
+    "compileall": "passed",
+    "bandit": "medium severity and confidence scan passed",
+    "pip_audit": "no known vulnerabilities",
+    "boundarylab": "49 tests, compileall, Ruff, and source mypy passed",
+    "workflow_yaml": "6 workflows parsed; external actions use immutable 40-character SHAs; no pull_request_target",
+    "zizmor": "no findings at medium severity and confidence in offline auditor mode",
+    "reproducible_distribution": {
+      "wheel_sha256": "b168f4715034c137af5bc8d7524d67239c604ec8a22e27926ebe4c778bf0ab92",
+      "sdist_sha256": "cf88f9f5751a9189ebd257686c84ceeb9cfb265f01d1a2b7519bfdc3f9a60805",
+      "two_builds_byte_identical": true,
+      "twine": "passed",
+      "release_verifier": "passed twice",
+      "clean_consumer": "wheel installed; pip check and all allow, deny, conformance, and completion commands passed",
+      "denied_exit_code": 3
+    }
+  },
+  "external_actions": {
+    "push": false,
+    "merge": false,
+    "workflow_dispatch": false,
+    "deploy": false,
+    "provider_or_account_mutation": false,
+    "package_publication": false
+  }
+}

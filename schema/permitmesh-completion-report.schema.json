@@ -1,8 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/JalenBuildsHub/PermitMesh/v0.2.0/schema/permitmesh-completion-report.schema.json",
+  "$id": "https://raw.githubusercontent.com/nymrel/PermitMesh/v0.2.0/schema/permitmesh-completion-report.schema.json",
   "title": "PermitMesh Completion Report 0.2",
   "type": "object",
+  "maxProperties": 256,
   "additionalProperties": false,
   "required": [
     "subject_id",
@@ -12,18 +13,20 @@
     "artifacts_present"
   ],
   "properties": {
-    "subject_id": {"type": "string", "minLength": 1},
-    "claim_id": {"type": "string", "minLength": 1},
+    "subject_id": {"type": "string", "minLength": 1, "maxLength": 65536},
+    "claim_id": {"type": "string", "minLength": 1, "maxLength": 65536},
     "fencing_generation": {"type": "integer", "minimum": 1},
     "commands_passed": {
       "type": "array",
+      "maxItems": 256,
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
+      "items": {"type": "string", "minLength": 1, "maxLength": 65536}
     },
     "artifacts_present": {
       "type": "array",
+      "maxItems": 256,
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1}
+      "items": {"type": "string", "minLength": 1, "maxLength": 65536}
     }
   }
 }
