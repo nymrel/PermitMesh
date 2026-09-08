@@ -33,6 +33,7 @@ jobs:
       - name: Count prior Nymrel maintenance proposals
         id: backlog
         env:
+          GH_REPO: ${{ github.repository }}
           CANARY_MODE: ${{ inputs.canary_mode }}
           GH_TOKEN: ${{ github.token }}
         shell: bash
