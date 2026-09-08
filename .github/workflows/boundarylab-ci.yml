@@ -1,0 +1,127 @@
+name: BoundaryLab incubator
+
+# This workflow remains path-scoped while BoundaryLab is an unmerged incubator.
+on:
+  pull_request:
+    paths:
+      - "incubator/boundarylab/**"
+      - ".github/workflows/boundarylab-ci.yml"
+  push:
+    paths:
+      - "incubator/boundarylab/**"
+      - ".github/workflows/boundarylab-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: boundarylab-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python:
+          - "3.11"
+          - "3.13"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: incubator/boundarylab/pyproject.toml
+
+      - name: Install BoundaryLab
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e incubator/boundarylab
+
+      - name: Run unit tests
+        run: python -m unittest discover -s incubator/boundarylab/tests -v
+
+      - name: Compile source and tests
+        run: python -m compileall -q incubator/boundarylab/src incubator/boundarylab/tests
+
+  quality:
+    name: Quality, build, and receipt smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: incubator/boundarylab/pyproject.toml
+
+      - name: Install quality tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e 'incubator/boundarylab[test]'
+
+      - name: Check formatting
+        run: ruff format --check incubator/boundarylab
+
+      - name: Lint
+        run: ruff check incubator/boundarylab
+
+      - name: Type-check
+        working-directory: incubator/boundarylab
+        run: mypy
+
+      - name: Static security analysis
+        run: bandit -q -r incubator/boundarylab/src -s B404,B603,B607
+
+      - name: Build wheel and source distribution
+        run: python -m build incubator/boundarylab
+
+      - name: Smoke-test built wheel and both CLI entry paths
+        run: |
+          python -m pip install --force-reinstall incubator/boundarylab/dist/*.whl
+          python -c "from boundarylab import __version__; print(__version__)"
+          python -m boundarylab probes --json > /tmp/boundarylab-module-probes.json
+          boundarylab probes --json > /tmp/boundarylab-console-probes.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          module = json.loads(Path('/tmp/boundarylab-module-probes.json').read_text())
+          console = json.loads(Path('/tmp/boundarylab-console-probes.json').read_text())
+          if module != console:
+              raise SystemExit('module and console entry points disagree')
+          PY
+
+      - name: Generate and independently verify evidence
+        run: |
+          RECEIPT=$(python -m boundarylab run \
+            --authorization incubator/boundarylab/examples/authorization.local.json \
+            --profile incubator/boundarylab/examples/profile.core.json \
+            --adapter local \
+            --out /tmp/boundarylab-runs)
+          python -m boundarylab verify "$RECEIPT"
+          python -m boundarylab export "$RECEIPT" \
+            --format markdown \
+            --out /tmp/boundarylab-report.md
+          python -m boundarylab export "$RECEIPT" \
+            --format junit \
+            --out /tmp/boundarylab-junit.xml
+          test -s /tmp/boundarylab-report.md
+          test -s /tmp/boundarylab-junit.xml
