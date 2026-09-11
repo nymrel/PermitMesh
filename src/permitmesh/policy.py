@@ -755,12 +755,8 @@ def authorize(
     effective_now = _trusted_now(now, findings)
     if "at" in request:
         _parse_time(request["at"], "request.at", findings)
-    not_before = _parse_time(
-        contract["validity"]["not_before"], "validity.not_before", findings
-    )
-    expires_at = _parse_time(
-        contract["validity"]["expires_at"], "validity.expires_at", findings
-    )
+    not_before = _parse_time(contract["validity"]["not_before"], "validity.not_before", findings)
+    expires_at = _parse_time(contract["validity"]["expires_at"], "validity.expires_at", findings)
     if not_before and effective_now is not None and effective_now < not_before:
         findings.add("NOT_YET_VALID", "contract is not active yet")
     if expires_at and effective_now is not None and effective_now >= expires_at:
@@ -805,9 +801,7 @@ def authorize(
                 f"request.operation is required for high-risk action {action!r}",
             )
         else:
-            _reject_unknown_fields(
-                operation, {"tool", "arguments"}, "request.operation", findings
-            )
+            _reject_unknown_fields(operation, {"tool", "arguments"}, "request.operation", findings)
             if not _is_bounded_text(operation.get("tool")):
                 findings.add(
                     "REQUEST_INVALID",
@@ -1027,12 +1021,8 @@ def verify_completion(
             )
 
     effective_now = _trusted_now(now, findings)
-    not_before = _parse_time(
-        contract["validity"]["not_before"], "validity.not_before", findings
-    )
-    expires_at = _parse_time(
-        contract["validity"]["expires_at"], "validity.expires_at", findings
-    )
+    not_before = _parse_time(contract["validity"]["not_before"], "validity.not_before", findings)
+    expires_at = _parse_time(contract["validity"]["expires_at"], "validity.expires_at", findings)
     if not_before and effective_now is not None and effective_now < not_before:
         findings.add("NOT_YET_VALID", "contract is not active yet")
     if expires_at and effective_now is not None and effective_now >= expires_at:
