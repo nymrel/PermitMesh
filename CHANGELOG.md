@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add a closed `reason_codes` layer on authorize/verify_completion decisions so
+  shadow replay can ignore human diagnostic wording. `decision_digest()` hashes
+  implementation version, allow/deny, contract digest, and those codes.
+
 ## 0.2.0 - 2026-07-23
 
 Security-boundary hardening release candidate.

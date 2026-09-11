@@ -73,7 +73,10 @@ The allowed request returns:
 ```json
 {
   "allowed": true,
-  "violations": []
+  "contract_digest": "<sha256>",
+  "reason_codes": [],
+  "violations": [],
+  "checks": ["validity_window", "subject", "channel", "capability"]
 }
 ```
 
@@ -82,11 +85,26 @@ The denied request reports all ten violations, including:
 ```json
 {
   "allowed": false,
+  "reason_codes": [
+    "OPERATION_BINDING_REQUIRED",
+    "NONCE_INVALID",
+    "REF_OUT_OF_SCOPE",
+    "PATH_DENIED",
+    "LIMIT_FILES_EXCEEDED",
+    "LIMIT_COMMANDS_EXCEEDED",
+    "LIMIT_COST_EXCEEDED",
+    "CLAIM_MISMATCH",
+    "FENCING_GENERATION_STALE",
+    "APPROVAL_REQUIRED"
+  ],
   "violations": [
     "request.operation is required for high-risk action 'deploy'",
     "request.operation_nonce must be 16-128 safe characters",
     "ref 'main' is outside scope",
     "path '.env' matches a deny rule",
+    "request.files_changed=24 exceeds max_files_changed=20",
+    "request.commands_used=120 exceeds max_commands=100",
+    "request.cost_usd=40 exceeds max_cost_usd=25",
     "claim_id does not match the active contract",
     "fencing_generation does not match the active contract",
     "action 'deploy' requires 1 approval(s) from the configured approvers"
