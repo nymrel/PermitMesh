@@ -13,7 +13,6 @@ from permitmesh.policy import (
     verify_completion,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 EVALUATION_TIME = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
 
