@@ -18,6 +18,7 @@ For a structurally valid permit and request, an evaluator returns:
 {
   "allowed": false,
   "contract_digest": "<sha256>",
+  "reason_codes": ["PATH_DENIED", "APPROVAL_REQUIRED"],
   "violations": ["<human-readable rule violation>"],
   "checks": ["validity_window", "capability", "repository_ref_path"]
 }
@@ -25,9 +26,11 @@ For a structurally valid permit and request, an evaluator returns:
 
 Evaluators should collect all independently observable violations in one pass. This makes a denial useful for both humans and agents and avoids iterative “fix one thing, discover another” loops.
 
-Violation wording is diagnostic and may evolve before 1.0. Integrations must
-not parse it as a stable machine API; `allowed`, exit codes, and the documented
-`checks` categories carry the decision semantics.
+`reason_codes` is the stable machine contract: one semantic predicate maps to one
+closed code, duplicates are normalized in first-seen order, and a replay digest
+may be computed over implementation version + `allowed` + `contract_digest` +
+those codes. Violation wording is diagnostic and may evolve before 1.0 without
+changing `reason_codes` when the predicate is unchanged.
 
 ## Evaluation order
 

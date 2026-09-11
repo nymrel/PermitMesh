@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from fnmatch import fnmatchcase
-from typing import Any
+from typing import Any, Protocol
 
 SUPPORTED_VERSION = "0.2"
 IMPLEMENTATION_VERSION = "0.2.0"
@@ -66,15 +66,108 @@ WINDOWS_RESERVED_NAMES = {
 WINDOWS_SHORT_NAME_PATTERN = re.compile(r"~[1-9][0-9]*(?:\.|$)", re.IGNORECASE)
 
 
+# Closed vocabulary for authorize/verify_completion predicates. Human
+# `violations` may change wording; these codes are the replay contract.
+REASON_CODES = (
+    "CONTRACT_INVALID",
+    "REQUEST_INVALID",
+    "NOT_YET_VALID",
+    "EXPIRED",
+    "SUBJECT_MISMATCH",
+    "CHANNEL_OUT_OF_SCOPE",
+    "CAPABILITY_NOT_GRANTED",
+    "PATH_REQUIRED",
+    "OPERATION_BINDING_REQUIRED",
+    "OPERATION_DIGEST_MISMATCH",
+    "NONCE_INVALID",
+    "NONCE_CONSUMED",
+    "REPOSITORY_OUT_OF_SCOPE",
+    "REF_OUT_OF_SCOPE",
+    "PATH_DENIED",
+    "LIMIT_FILES_EXCEEDED",
+    "LIMIT_COMMANDS_EXCEEDED",
+    "LIMIT_COST_EXCEEDED",
+    "CLAIM_MISMATCH",
+    "FENCING_GENERATION_STALE",
+    "APPROVAL_REQUIRED",
+    "COMPLETION_EVIDENCE_MISSING",
+)
+REASON_CODE_SET = frozenset(REASON_CODES)
+
+
 @dataclass(frozen=True)
 class Decision:
     allowed: bool
     contract_digest: str
+    reason_codes: tuple[str, ...]
     violations: tuple[str, ...]
     checks: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+class _Findings:
+    """Deterministic (code, human-detail) sink. Helpers may `.append(detail)`."""
+
+    def __init__(self, default_code: str = "REQUEST_INVALID") -> None:
+        if default_code not in REASON_CODE_SET:
+            raise ValueError(f"unknown reason code: {default_code}")
+        self.default_code = default_code
+        self._items: list[tuple[str, str]] = []
+
+    def add(self, code: str, detail: str) -> None:
+        if code not in REASON_CODE_SET:
+            raise ValueError(f"unknown reason code: {code}")
+        self._items.append((code, detail))
+
+    def append(self, detail: str) -> None:
+        self.add(self.default_code, detail)
+
+    def extend(self, code: str, details: tuple[str, ...] | list[str]) -> None:
+        for detail in details:
+            self.add(code, detail)
+
+    @property
+    def details(self) -> tuple[str, ...]:
+        return tuple(detail for _, detail in self._items)
+
+    @property
+    def codes(self) -> tuple[str, ...]:
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for code, _ in self._items:
+            if code not in seen:
+                seen.add(code)
+                ordered.append(code)
+        return tuple(ordered)
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
+
+def _decision(digest: str, findings: _Findings, checks: list[str] | tuple[str, ...]) -> Decision:
+    return Decision(
+        allowed=not findings,
+        contract_digest=digest,
+        reason_codes=findings.codes,
+        violations=findings.details,
+        checks=tuple(checks),
+    )
+
+
+def decision_digest(decision: Decision) -> str:
+    """Replay digest over version + allow/deny + contract digest + reason codes."""
+    return hashlib.sha256(
+        canonical_json(
+            {
+                "implementation_version": IMPLEMENTATION_VERSION,
+                "allowed": decision.allowed,
+                "contract_digest": decision.contract_digest,
+                "reason_codes": list(decision.reason_codes),
+            }
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _canonical_json(value: Any, *, depth: int, remaining_nodes: list[int]) -> str:
@@ -185,7 +278,11 @@ def operation_digest(action: str, operation: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
-def _parse_time(value: Any, field: str, violations: list[str]) -> datetime | None:
+class _MessageSink(Protocol):
+    def append(self, detail: str) -> None: ...
+
+
+def _parse_time(value: Any, field: str, violations: _MessageSink) -> datetime | None:
     if not isinstance(value, str) or RFC3339_PATTERN.fullmatch(value) is None:
         violations.append(f"{field} must be an RFC 3339 timestamp")
         return None
@@ -244,7 +341,7 @@ def _validate_patterns(
 
 
 def _reject_unknown_fields(
-    value: dict[str, Any], allowed: set[str], field: str, violations: list[str]
+    value: dict[str, Any], allowed: set[str], field: str, violations: _MessageSink
 ) -> None:
     for unknown in sorted(value.keys() - allowed, key=str):
         violations.append(f"{field} contains unknown field: {unknown}")
@@ -253,7 +350,7 @@ def _reject_unknown_fields(
 def _too_many_items(
     value: list[Any] | tuple[Any, ...] | set[Any] | frozenset[Any],
     field: str,
-    violations: list[str],
+    violations: _MessageSink,
     *,
     maximum: int = MAX_COLLECTION_ITEMS,
 ) -> bool:
@@ -578,7 +675,7 @@ def _matches_glob(value: str, pattern: str) -> bool:
     return previous[len(value_parts)]
 
 
-def _trusted_now(now: datetime | None, violations: list[str]) -> datetime | None:
+def _trusted_now(now: datetime | None, violations: _MessageSink) -> datetime | None:
     if now is None:
         return datetime.now(UTC)
     if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
@@ -594,28 +691,26 @@ def authorize(
     now: datetime | None = None,
     consumed_nonces: frozenset[str] | set[str] | None = None,
 ) -> Decision:
+    findings = _Findings()
     try:
         digest = contract_digest(contract)
     except (TypeError, ValueError):
-        return Decision(
-            False,
-            "",
-            ("contract must contain canonical JSON values",),
-            (),
-        )
-    violations = list(validate_contract(contract))
+        findings.add("CONTRACT_INVALID", "contract must contain canonical JSON values")
+        return _decision("", findings, ())
+    contract_violations = validate_contract(contract)
     checks: list[str] = []
-    if violations:
-        return Decision(False, digest, tuple(violations), tuple(checks))
+    if contract_violations:
+        findings.extend("CONTRACT_INVALID", contract_violations)
+        return _decision(digest, findings, checks)
     if not isinstance(request, dict):
-        return Decision(False, digest, ("request must be a JSON object",), tuple(checks))
+        findings.add("REQUEST_INVALID", "request must be a JSON object")
+        return _decision(digest, findings, checks)
     if len(request) > MAX_COLLECTION_ITEMS:
-        return Decision(
-            False,
-            digest,
-            (f"request must contain at most {MAX_COLLECTION_ITEMS} fields",),
-            tuple(checks),
+        findings.add(
+            "REQUEST_INVALID",
+            f"request must contain at most {MAX_COLLECTION_ITEMS} fields",
         )
+        return _decision(digest, findings, checks)
     request_fields = {
         "subject_id",
         "action",
@@ -633,7 +728,7 @@ def authorize(
         "operation_nonce",
         "at",
     }
-    _reject_unknown_fields(request, request_fields, "request", violations)
+    _reject_unknown_fields(request, request_fields, "request", findings)
     required_request_fields = request_fields - {
         "path",
         "at",
@@ -642,7 +737,7 @@ def authorize(
         "operation_nonce",
     }
     for field in sorted(required_request_fields - request.keys()):
-        violations.append(f"missing required request field: {field}")
+        findings.add("REQUEST_INVALID", f"missing required request field: {field}")
     for field, maximum in {
         "subject_id": MAX_CANONICAL_STRING_CHARS,
         "repository": MAX_CANONICAL_STRING_CHARS,
@@ -650,44 +745,51 @@ def authorize(
         "claim_id": MAX_CANONICAL_STRING_CHARS,
     }.items():
         if field in request and not _is_bounded_text(request[field], maximum=maximum):
-            violations.append(f"request.{field} must be a bounded non-empty string")
+            findings.add(
+                "REQUEST_INVALID",
+                f"request.{field} must be a bounded non-empty string",
+            )
 
     # The evaluator's clock is authoritative. A request's self-declared time is
     # parsed for receipt quality but can never extend or revive authorization.
-    effective_now = _trusted_now(now, violations)
+    effective_now = _trusted_now(now, findings)
     if "at" in request:
-        _parse_time(request["at"], "request.at", violations)
-    not_before = _parse_time(contract["validity"]["not_before"], "validity.not_before", violations)
-    expires_at = _parse_time(contract["validity"]["expires_at"], "validity.expires_at", violations)
+        _parse_time(request["at"], "request.at", findings)
+    not_before = _parse_time(
+        contract["validity"]["not_before"], "validity.not_before", findings
+    )
+    expires_at = _parse_time(
+        contract["validity"]["expires_at"], "validity.expires_at", findings
+    )
     if not_before and effective_now is not None and effective_now < not_before:
-        violations.append("contract is not active yet")
+        findings.add("NOT_YET_VALID", "contract is not active yet")
     if expires_at and effective_now is not None and effective_now >= expires_at:
-        violations.append("contract has expired")
+        findings.add("EXPIRED", "contract has expired")
     checks.append("validity_window")
 
     if request.get("subject_id") != contract["subject"]["id"]:
-        violations.append("subject_id does not match the active contract")
+        findings.add("SUBJECT_MISMATCH", "subject_id does not match the active contract")
     checks.append("subject")
 
     configured_channels = contract["scope"]["channels"]
     requested_channel = request.get("channel")
     if "channel" in request and (not _is_bounded_text(requested_channel)):
-        violations.append("request.channel must be a non-empty string")
+        findings.add("REQUEST_INVALID", "request.channel must be a non-empty string")
     if configured_channels and requested_channel not in configured_channels:
-        violations.append(f"channel {requested_channel!r} is outside scope")
+        findings.add("CHANNEL_OUT_OF_SCOPE", f"channel {requested_channel!r} is outside scope")
     checks.append("channel")
 
     action = request.get("action")
     if not isinstance(action, str):
-        violations.append("request.action must be a known capability string")
+        findings.add("REQUEST_INVALID", "request.action must be a known capability string")
     elif action not in contract["capabilities"]:
-        violations.append(f"capability {action!r} is not granted")
+        findings.add("CAPABILITY_NOT_GRANTED", f"capability {action!r} is not granted")
     if (
         isinstance(action, str)
         and action in PATH_REQUIRED_CAPABILITIES
         and request.get("path") is None
     ):
-        violations.append(f"request.path is required for {action}")
+        findings.add("PATH_REQUIRED", f"request.path is required for {action}")
     checks.append("capability")
 
     if isinstance(action, str) and action in HIGH_RISK_CAPABILITIES:
@@ -698,35 +800,53 @@ def authorize(
         nonce = request.get("operation_nonce")
         operation_is_valid = operation is not None
         if operation is None:
-            violations.append(f"request.operation is required for high-risk action {action!r}")
+            findings.add(
+                "OPERATION_BINDING_REQUIRED",
+                f"request.operation is required for high-risk action {action!r}",
+            )
         else:
             _reject_unknown_fields(
-                operation, {"tool", "arguments"}, "request.operation", violations
+                operation, {"tool", "arguments"}, "request.operation", findings
             )
             if not _is_bounded_text(operation.get("tool")):
-                violations.append("request.operation.tool must be a bounded non-empty string")
+                findings.add(
+                    "REQUEST_INVALID",
+                    "request.operation.tool must be a bounded non-empty string",
+                )
                 operation_is_valid = False
             if not isinstance(operation.get("arguments"), dict):
-                violations.append("request.operation.arguments must be an object")
+                findings.add("REQUEST_INVALID", "request.operation.arguments must be an object")
                 operation_is_valid = False
         if not isinstance(nonce, str) or NONCE_PATTERN.fullmatch(nonce) is None:
-            violations.append("request.operation_nonce must be 16-128 safe characters")
+            findings.add(
+                "NONCE_INVALID",
+                "request.operation_nonce must be 16-128 safe characters",
+            )
         elif consumed_nonces is None:
-            violations.append("high-risk authorization requires an explicit consumed_nonces set")
+            findings.add(
+                "OPERATION_BINDING_REQUIRED",
+                "high-risk authorization requires an explicit consumed_nonces set",
+            )
         elif not isinstance(consumed_nonces, (set, frozenset)) or not all(
             isinstance(item, str) for item in consumed_nonces
         ):
-            violations.append("consumed_nonces must be a set of strings")
+            findings.add("REQUEST_INVALID", "consumed_nonces must be a set of strings")
         elif len(consumed_nonces) > MAX_REPLAY_NONCES:
-            violations.append(f"consumed_nonces must contain at most {MAX_REPLAY_NONCES} items")
+            findings.add(
+                "REQUEST_INVALID",
+                f"consumed_nonces must contain at most {MAX_REPLAY_NONCES} items",
+            )
         elif nonce in consumed_nonces:
-            violations.append("request.operation_nonce has already been consumed")
+            findings.add("NONCE_CONSUMED", "request.operation_nonce has already been consumed")
 
         if operation_is_valid and operation is not None and isinstance(nonce, str):
             try:
                 requested_operation_digest = operation_digest(action, operation)
             except (TypeError, ValueError):
-                violations.append("request.operation must contain canonical JSON values")
+                findings.add(
+                    "REQUEST_INVALID",
+                    "request.operation must contain canonical JSON values",
+                )
             else:
                 matching_constraint = any(
                     constraint.get("action") == action
@@ -736,11 +856,15 @@ def authorize(
                     if isinstance(constraint, dict)
                 )
                 if not matching_constraint:
-                    violations.append(
-                        "request operation and nonce do not match an approved constraint"
+                    findings.add(
+                        "OPERATION_DIGEST_MISMATCH",
+                        "request operation and nonce do not match an approved constraint",
                     )
     elif "operation" in request or "operation_nonce" in request:
-        violations.append("operation binding fields are only valid for high-risk actions")
+        findings.add(
+            "REQUEST_INVALID",
+            "operation binding fields are only valid for high-risk actions",
+        )
     checks.append("operation_binding")
 
     repository_name = request.get("repository")
@@ -753,7 +877,10 @@ def authorize(
         None,
     )
     if repository is None:
-        violations.append(f"repository {repository_name!r} is outside scope")
+        findings.add(
+            "REPOSITORY_OUT_OF_SCOPE",
+            f"repository {repository_name!r} is outside scope",
+        )
     else:
         requested_ref = request.get("ref")
         if isinstance(requested_ref, str) and _is_bounded_text(
@@ -765,12 +892,12 @@ def authorize(
         else:
             ref_allowed = False
         if not ref_allowed:
-            violations.append(f"ref {requested_ref!r} is outside scope")
+            findings.add("REF_OUT_OF_SCOPE", f"ref {requested_ref!r} is outside scope")
 
         if "path" in request:
             requested_path = request["path"]
             if not isinstance(requested_path, str) or not _is_safe_relative_path(requested_path):
-                violations.append("request.path must be a safe relative path")
+                findings.add("REQUEST_INVALID", "request.path must be a safe relative path")
             else:
                 denied = any(
                     _matches_glob(requested_path.casefold(), pattern.casefold())
@@ -780,9 +907,12 @@ def authorize(
                     _matches_glob(requested_path, pattern) for pattern in repository["allow_paths"]
                 )
                 if denied:
-                    violations.append(f"path {requested_path!r} matches a deny rule")
+                    findings.add("PATH_DENIED", f"path {requested_path!r} matches a deny rule")
                 elif not allowed:
-                    violations.append(f"path {requested_path!r} is outside allowed paths")
+                    findings.add(
+                        "PATH_DENIED",
+                        f"path {requested_path!r} is outside allowed paths",
+                    )
     checks.append("repository_ref_path")
 
     limits = contract["limits"]
@@ -791,6 +921,11 @@ def authorize(
         "commands_used": "max_commands",
         "cost_usd": "max_cost_usd",
     }
+    limit_codes = {
+        "files_changed": "LIMIT_FILES_EXCEEDED",
+        "commands_used": "LIMIT_COMMANDS_EXCEEDED",
+        "cost_usd": "LIMIT_COST_EXCEEDED",
+    }
     for request_field, limit_field in request_limits.items():
         value = request.get(request_field, 0)
         if request_field == "cost_usd":
@@ -798,45 +933,53 @@ def authorize(
         else:
             valid_number = isinstance(value, int) and not isinstance(value, bool) and value >= 0
         if not valid_number:
-            violations.append(f"request.{request_field} must be a finite non-negative number")
+            findings.add(
+                "REQUEST_INVALID",
+                f"request.{request_field} must be a finite non-negative number",
+            )
         elif (
             request_field == "cost_usd" and _as_decimal(value) > _as_decimal(limits[limit_field])
         ) or (request_field != "cost_usd" and value > limits[limit_field]):
-            violations.append(
-                f"request.{request_field}={value} exceeds {limit_field}={limits[limit_field]}"
+            findings.add(
+                limit_codes[request_field],
+                f"request.{request_field}={value} exceeds {limit_field}={limits[limit_field]}",
             )
     checks.append("budgets")
 
     lifecycle = contract["lifecycle"]
     if request.get("claim_id") != lifecycle["claim_id"]:
-        violations.append("claim_id does not match the active contract")
+        findings.add("CLAIM_MISMATCH", "claim_id does not match the active contract")
     if request.get("fencing_generation") != lifecycle["fencing_generation"]:
-        violations.append("fencing_generation does not match the active contract")
+        findings.add(
+            "FENCING_GENERATION_STALE",
+            "fencing_generation does not match the active contract",
+        )
     checks.append("claim_and_fence")
 
     raw_approvals = request.get("approvals")
     if not isinstance(raw_approvals, list) or not all(
         _is_bounded_text(approval) for approval in raw_approvals
     ):
-        violations.append("request.approvals must be a string array")
+        findings.add("REQUEST_INVALID", "request.approvals must be a string array")
         supplied_approvals: set[str] = set()
-    elif _too_many_items(raw_approvals, "request.approvals", violations):
+    elif _too_many_items(raw_approvals, "request.approvals", findings):
         supplied_approvals = set()
     else:
         if len(raw_approvals) != len(set(raw_approvals)):
-            violations.append("request.approvals must not contain duplicates")
+            findings.add("REQUEST_INVALID", "request.approvals must not contain duplicates")
         supplied_approvals = set(raw_approvals)
     for gate in contract["approval_gates"]:
         if action in gate["actions"]:
             qualified = supplied_approvals.intersection(gate["approvers"])
             if len(qualified) < gate["min_approvals"]:
-                violations.append(
+                findings.add(
+                    "APPROVAL_REQUIRED",
                     f"action {action!r} requires {gate['min_approvals']} approval(s) "
-                    f"from the configured approvers"
+                    f"from the configured approvers",
                 )
     checks.append("approval_gates")
 
-    return Decision(not violations, digest, tuple(violations), tuple(checks))
+    return _decision(digest, findings, checks)
 
 
 def verify_completion(
@@ -845,28 +988,26 @@ def verify_completion(
     *,
     now: datetime | None = None,
 ) -> Decision:
+    findings = _Findings()
     try:
         digest = contract_digest(contract)
     except (TypeError, ValueError):
-        return Decision(
-            False,
-            "",
-            ("contract must contain canonical JSON values",),
-            (),
-        )
-    violations = list(validate_contract(contract))
+        findings.add("CONTRACT_INVALID", "contract must contain canonical JSON values")
+        return _decision("", findings, ())
+    contract_violations = validate_contract(contract)
     checks: list[str] = []
-    if violations:
-        return Decision(False, digest, tuple(violations), tuple(checks))
+    if contract_violations:
+        findings.extend("CONTRACT_INVALID", contract_violations)
+        return _decision(digest, findings, checks)
     if not isinstance(report, dict):
-        return Decision(False, digest, ("completion report must be a JSON object",), ())
+        findings.add("REQUEST_INVALID", "completion report must be a JSON object")
+        return _decision(digest, findings, ())
     if len(report) > MAX_COLLECTION_ITEMS:
-        return Decision(
-            False,
-            digest,
-            (f"completion report must contain at most {MAX_COLLECTION_ITEMS} fields",),
-            (),
+        findings.add(
+            "REQUEST_INVALID",
+            f"completion report must contain at most {MAX_COLLECTION_ITEMS} fields",
         )
+        return _decision(digest, findings, ())
 
     report_fields = {
         "subject_id",
@@ -875,31 +1016,41 @@ def verify_completion(
         "commands_passed",
         "artifacts_present",
     }
-    _reject_unknown_fields(report, report_fields, "completion report", violations)
+    _reject_unknown_fields(report, report_fields, "completion report", findings)
     for field in sorted(report_fields - report.keys()):
-        violations.append(f"missing required completion field: {field}")
+        findings.add("REQUEST_INVALID", f"missing required completion field: {field}")
     for field in ("subject_id", "claim_id"):
         if field in report and not _is_bounded_text(report[field]):
-            violations.append(f"completion report.{field} must be a bounded non-empty string")
+            findings.add(
+                "REQUEST_INVALID",
+                f"completion report.{field} must be a bounded non-empty string",
+            )
 
-    effective_now = _trusted_now(now, violations)
-    not_before = _parse_time(contract["validity"]["not_before"], "validity.not_before", violations)
-    expires_at = _parse_time(contract["validity"]["expires_at"], "validity.expires_at", violations)
+    effective_now = _trusted_now(now, findings)
+    not_before = _parse_time(
+        contract["validity"]["not_before"], "validity.not_before", findings
+    )
+    expires_at = _parse_time(
+        contract["validity"]["expires_at"], "validity.expires_at", findings
+    )
     if not_before and effective_now is not None and effective_now < not_before:
-        violations.append("contract is not active yet")
+        findings.add("NOT_YET_VALID", "contract is not active yet")
     if expires_at and effective_now is not None and effective_now >= expires_at:
-        violations.append("contract has expired")
+        findings.add("EXPIRED", "contract has expired")
     checks.append("validity_window")
 
     if report.get("subject_id") != contract["subject"]["id"]:
-        violations.append("subject_id does not match the active contract")
+        findings.add("SUBJECT_MISMATCH", "subject_id does not match the active contract")
     checks.append("subject")
 
     lifecycle = contract["lifecycle"]
     if report.get("claim_id") != lifecycle["claim_id"]:
-        violations.append("claim_id does not match the active contract")
+        findings.add("CLAIM_MISMATCH", "claim_id does not match the active contract")
     if report.get("fencing_generation") != lifecycle["fencing_generation"]:
-        violations.append("fencing_generation does not match the active contract")
+        findings.add(
+            "FENCING_GENERATION_STALE",
+            "fencing_generation does not match the active contract",
+        )
     checks.append("claim_and_fence")
 
     evidence_fields = {
@@ -909,19 +1060,25 @@ def verify_completion(
     for report_field, contract_field in evidence_fields.items():
         supplied = report.get(report_field)
         if not isinstance(supplied, list) or not all(_is_bounded_text(item) for item in supplied):
-            violations.append(f"completion report.{report_field} must be a string array")
+            findings.add(
+                "REQUEST_INVALID",
+                f"completion report.{report_field} must be a string array",
+            )
             supplied_set: set[str] = set()
-        elif _too_many_items(supplied, f"completion report.{report_field}", violations):
+        elif _too_many_items(supplied, f"completion report.{report_field}", findings):
             supplied_set = set()
         else:
             supplied_set = set(supplied)
             if len(supplied) != len(supplied_set):
-                violations.append(f"completion report.{report_field} must not contain duplicates")
+                findings.add(
+                    "REQUEST_INVALID",
+                    f"completion report.{report_field} must not contain duplicates",
+                )
         for missing in sorted(set(contract["validation"][contract_field]) - supplied_set):
-            violations.append(f"missing {contract_field}: {missing}")
+            findings.add("COMPLETION_EVIDENCE_MISSING", f"missing {contract_field}: {missing}")
         checks.append(contract_field)
 
-    return Decision(not violations, digest, tuple(violations), tuple(checks))
+    return _decision(digest, findings, checks)
 
 
 def to_nostr_event_template(
