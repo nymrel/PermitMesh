@@ -46,7 +46,7 @@ to an unrestricted agent does not enforce anything.
 
 **Also the wrong repo if you need a PyPI package, Buzz/Nostr endorsement, or
 cryptographic signature verification in the reference CLI.** Those are out of
-scope until Jalen explicitly approves a release.
+scope until the maintainer explicitly approves a release.
 
 If this is you: run `.\scripts\demo.ps1`, then [report a conformance
 run](https://github.com/nymrel/PermitMesh/issues/new?template=conformance-run.yml)
