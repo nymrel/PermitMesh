@@ -29,6 +29,30 @@ The reference CLI evaluates proposed actions deterministically and fails closed 
 > interoperability candidate in a public source repository, not a security
 > boundary or package-release claim.
 
+## Who this is for
+
+Maintainers of agent runtimes — Cursor, Codex, Claude Code, or a custom tool
+proxy — who need a **fail-closed policy decision** before an agent changes
+software.
+
+Use this repo when you need a portable JSON contract for path/ref/repository
+scope, exact tool and argument bindings, file/command/time/cost budgets, live
+claim and fencing generation, one-time operation nonces, and human-approval
+gates.
+
+**Wrong repo if you need identity, sandboxing, tool interception, or
+enforcement.** PermitMesh is a PDP. Your runtime is the PEP. A JSON file next
+to an unrestricted agent does not enforce anything.
+
+**Also the wrong repo if you need a PyPI package, Buzz/Nostr endorsement, or
+cryptographic signature verification in the reference CLI.** Those are out of
+scope until the maintainer explicitly approves a release.
+
+If this is you: run `.\scripts\demo.ps1`, then [report a conformance
+run](https://github.com/nymrel/PermitMesh/issues/new?template=conformance-run.yml)
+after one allowed action and one deliberately denied action against your own
+workflow. Stars are discovery, not success.
+
 ## Why this exists
 
 [Buzz](https://github.com/block/buzz) gives people and agents cryptographic
