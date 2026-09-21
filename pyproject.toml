@@ -33,7 +33,7 @@ test = [
 ]
 dev = [
   "bandit==1.9.4",
-  "build==1.6.0",
+  "build==1.6.1",
   "coverage==7.16.0",
   "jsonschema[format]==4.26.0",
   "mypy==2.3.1",
