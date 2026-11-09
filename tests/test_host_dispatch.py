@@ -210,3 +210,14 @@ class HostDispatchTests(unittest.TestCase):
         for field in ("action", "operation", "operation_nonce", "at"):
             with self.assertRaises(ValueError):
                 self.dispatcher.replace_context(json.dumps({**self.context, field: "caller"}))
+
+    def test_clock_reentry_cannot_replace_context_between_evaluation_and_entry(self) -> None:
+        def changing_clock() -> datetime:
+            host.replace_context(json.dumps({**self.context, "claim_id": "new-claim"}))
+            return self.now
+
+        host = self.make_dispatcher(self.entered.append, changing_clock)
+        result = host.dispatch(self.arguments, self.nonce)
+        self.assertEqual(result.state, "DENIED")
+        self.assertEqual(result.reason_codes, ("HOST_EVALUATION_UNAVAILABLE",))
+        self.assertEqual(self.entered, [])

@@ -51,8 +51,8 @@ Preserve the wheel SHA-256 and example/source revision when evaluating it.
 `replace_context()` is a trusted-host method serialized against dispatch. A
 changed claim, fence, approval or clock is evaluated at the next admission.
 It is not a public context-update or login endpoint. Direct same-instance
-callback re-entry returns `HOST_REENTRY`; context replacement during the callback
-is rejected. The lock is held until the synchronous callback returns: callbacks
+clock or callback re-entry returns `HOST_REENTRY`; context replacement during
+evaluation or the callback is rejected. The lock is held until the synchronous callback returns: callbacks
 must not start another thread and wait for it to call this dispatcher. Blocking
 or nonreturning handlers can block the host indefinitely. There is no timeout,
 cancellation, resource isolation or subprocess runner.

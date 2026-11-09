@@ -135,7 +135,7 @@ class TestDispatcher:
         self._handler = handler
         self._clock = clock
         self._lock = RLock()
-        self._in_handler = False
+        self._in_dispatch = False
         self._reserved: set[str] = set()
         self.replace_context(context_json)
 
@@ -145,8 +145,8 @@ class TestDispatcher:
         if {"action", "operation", "operation_nonce", "at"}.intersection(context):
             raise ValueError("host context contains dispatcher-owned fields")
         with self._lock:
-            if self._in_handler:
-                raise ValueError("host context update during callback")
+            if self._in_dispatch:
+                raise ValueError("host context update during dispatch")
             self._context = context
 
     def dispatch(self, arguments_json: str, nonce: str) -> DispatchResult:
@@ -161,45 +161,53 @@ class TestDispatcher:
             return DispatchResult("DENIED", ("HOST_INPUT_INVALID",))
 
         with self._lock:
-            if self._in_handler:
+            if self._in_dispatch:
                 return DispatchResult("DENIED", ("HOST_REENTRY",))
-            request = {
-                **self._context,
-                "action": "test",
-                "operation": operation,
-                "operation_nonce": nonce,
-            }
+            self._in_dispatch = True
             try:
-                now = self._clock()
-                if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
-                    raise ValueError("host clock must return an aware datetime")
-                decision = authorize(
-                    self._contract,
-                    request,
-                    now=now,
-                    consumed_nonces=self._reserved,
-                )
-            except Exception:
-                # No handler entered. Never disclose host exception text.
-                return DispatchResult("DENIED", ("HOST_EVALUATION_UNAVAILABLE",))
-            if not decision.allowed:
-                return DispatchResult(
-                    "DENIED", decision.reason_codes, digest, decision.contract_digest
-                )
+                request = {
+                    **self._context,
+                    "action": "test",
+                    "operation": operation,
+                    "operation_nonce": nonce,
+                }
+                try:
+                    now = self._clock()
+                    if (
+                        not isinstance(now, datetime)
+                        or now.tzinfo is None
+                        or now.utcoffset() is None
+                    ):
+                        raise ValueError("host clock must return an aware datetime")
+                    decision = authorize(
+                        self._contract,
+                        request,
+                        now=now,
+                        consumed_nonces=self._reserved,
+                    )
+                except Exception:
+                    # No handler entered. Never disclose host exception text.
+                    return DispatchResult("DENIED", ("HOST_EVALUATION_UNAVAILABLE",))
+                if not decision.allowed:
+                    return DispatchResult(
+                        "DENIED", decision.reason_codes, digest, decision.contract_digest
+                    )
 
-            # Reservation and handler admission share the host-owned lock. Retain
-            # the reservation even when a callback raises or its effect is unknown.
-            self._reserved.add(nonce)
-            self._in_handler = True
-            try:
-                self._handler(arguments)
-            except Exception:
-                return DispatchResult(
-                    "UNKNOWN", ("HOST_HANDLER_OUTCOME_UNKNOWN",), digest, decision.contract_digest
-                )
+                # Reservation and handler admission share the host-owned lock. Retain
+                # the reservation even when a callback raises or its effect is unknown.
+                self._reserved.add(nonce)
+                try:
+                    self._handler(arguments)
+                except Exception:
+                    return DispatchResult(
+                        "UNKNOWN",
+                        ("HOST_HANDLER_OUTCOME_UNKNOWN",),
+                        digest,
+                        decision.contract_digest,
+                    )
+                return DispatchResult("RETURNED", (), digest, decision.contract_digest)
             finally:
-                self._in_handler = False
-            return DispatchResult("RETURNED", (), digest, decision.contract_digest)
+                self._in_dispatch = False
 
 
 def fixture_inputs() -> tuple[dict[str, Any], dict[str, Any], str, str]:
