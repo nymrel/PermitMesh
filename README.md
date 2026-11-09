@@ -31,6 +31,18 @@ The reference CLI evaluates proposed actions deterministically and fails closed 
 
 ## Who this is for
 
+### Choose your path
+
+| Your goal | Start here | What to check next |
+| --- | --- | --- |
+| Understand or approve an agent's scope without coding | Read the [example contract](examples/contract.valid.json) beside the allowed and denied results below. | Confirm the repository, paths, actions, expiry, budgets, and approvers match your intent. Ask the runtime owner where the decision is enforced. |
+| Integrate a runtime | Run the thirty-second demo, then the [host callback example](docs/HOST_DISPATCH.md). | Confirm that a denied action never reaches your tool handler, then report a redacted conformance run. |
+| Call the evaluator from an agent | Use `authorize` with the contract and request schemas in [schema/](schema). Parse `allowed`, `reason_codes`, and the exit status. | Exit `3` is a denial, not a transient failure. Return its reasons to the scope owner; do not widen a permit or retry execution. Exit `2` needs corrected input. |
+
+This source project has no customer dashboard or hosted authorization endpoint.
+Reading or editing a contract does not install enforcement. The runtime owner
+supplies trusted time, identity, approval, and replay state.
+
 Maintainers of agent runtimes — Cursor, Codex, Claude Code, or a custom tool
 proxy — who need a **fail-closed policy decision** before an agent changes
 software.
