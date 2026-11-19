@@ -31,6 +31,18 @@ The reference CLI evaluates proposed actions deterministically and fails closed 
 
 ## Who this is for
 
+### Choose your path
+
+| Your goal | Start here | What to check next |
+| --- | --- | --- |
+| Understand or approve an agent's scope without coding | Read the [example contract](examples/contract.valid.json) beside the allowed and denied results below. | Confirm the repository, paths, actions, expiry, budgets, and approvers match your intent. Ask the runtime owner where the decision is enforced. |
+| Integrate a runtime | Run the thirty-second demo, then the [host callback example](docs/HOST_DISPATCH.md). | Confirm that a denied action never reaches your tool handler, then report a redacted conformance run. |
+| Call the evaluator from an agent | Use `authorize` with the contract and request schemas in [schema/](schema). Parse `allowed`, `reason_codes`, and the exit status. | Exit `3` is a denial, not a transient failure. Return its reasons to the scope owner; do not widen a permit or retry execution. Exit `2` needs corrected input. |
+
+This source project has no customer dashboard or hosted authorization endpoint.
+Reading or editing a contract does not install enforcement. The runtime owner
+supplies trusted time, identity, approval, and replay state.
+
 Maintainers of agent runtimes — Cursor, Codex, Claude Code, or a custom tool
 proxy — who need a **fail-closed policy decision** before an agent changes
 software.
@@ -172,6 +184,14 @@ flowchart LR
 ```
 
 PermitMesh is the policy decision point. The runtime, relay, or tool proxy remains the enforcement point. A JSON file sitting beside an unrestricted agent does not enforce anything.
+
+## Host callback example
+
+The [copied host example](docs/HOST_DISPATCH.md) connects a real policy decision
+to one registered, harmless callback. It checks current host context, binds the
+exact arguments, and reserves a local nonce before entry. Denied attempts never
+enter that handler; ambiguous callback exceptions remain UNKNOWN. This is a
+single-instance reference, not durable replay storage or a sandbox.
 
 ## Commands
 

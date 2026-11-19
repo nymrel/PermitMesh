@@ -118,7 +118,7 @@ The tool proxy or Postiz adapter should perform these steps atomically where pos
 11. Write completion evidence and an Agent ProofChain receipt.
 12. Reject stale retries, altered arguments, or duplicate execution.
 
-The current reference evaluator applies operation-constraint and replay-state checks only to its implemented high-risk action category; `publish` is outside that category today. Therefore the CLI cannot establish nonce availability, exact distribution-operation enforcement, or provider permission for this design. The future enforcement point must own the authoritative snapshot plus exact binding, atomic reservation, and consumption.
+The current reference evaluator includes `publish` and `spend` in its high-risk category and checks their operation binding against an explicitly supplied replay snapshot. It does not own that snapshot or reserve/consume a nonce, and no distribution enforcement adapter is implemented here. The CLI therefore cannot establish authoritative nonce availability, distribution-operation enforcement, or provider permission. The future enforcement point must own exact binding, atomic reservation and consumption, with protected-resource fencing. The [single-instance callback example](HOST_DISPATCH.md) demonstrates a narrower synthetic host boundary, not this provider integration.
 
 ## Fail-closed conditions
 
